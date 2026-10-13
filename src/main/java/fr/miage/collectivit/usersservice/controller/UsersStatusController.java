@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Controller exposing users service status and health information with OpenAPI documentation. */
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/v1/users")
 @Tag(name = "Users Status", description = "Operations related to users service status")
 public class UsersStatusController {
 
