@@ -65,6 +65,10 @@ public class User {
   @Column(name = "client_code", nullable = false, unique = true, length = 7)
   private String clientCode;
 
+  // Physical card pickup point (e.g., town hall or partner shop)
+  @Column(name = "pickup_location", length = 150)
+  private String pickupLocation;
+
   // Uses SQL ARRAY mapping supported natively in PostgreSQL and modern dialects
   @JdbcTypeCode(SqlTypes.ARRAY)
   @Column(name = "license_plates")

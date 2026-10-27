@@ -32,6 +32,7 @@ class UserRepositoryTest {
             .lastName("Dupont")
             .birthDate(LocalDate.of(1990, 5, 15))
             .clientCode("aB3dE7K")
+            .pickupLocation("Mairie Centrale")
             .licensePlates(List.of("AA-123-AA", "BB-456-BB"))
             .build();
 
@@ -48,6 +49,7 @@ class UserRepositoryTest {
     assertThat(foundByPublicId.get().getFirstName()).isEqualTo("Jean");
     assertThat(foundByPublicId.get().getLastName()).isEqualTo("Dupont");
     assertThat(foundByPublicId.get().getRole()).isEqualTo(UserRole.CLIENT);
+    assertThat(foundByPublicId.get().getPickupLocation()).isEqualTo("Mairie Centrale");
     assertThat(foundByPublicId.get().getLicensePlates()).containsExactly("AA-123-AA", "BB-456-BB");
     assertThat(foundByPublicId.get().getClientCode()).isEqualTo("aB3dE7K");
   }
