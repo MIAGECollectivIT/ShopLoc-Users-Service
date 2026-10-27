@@ -1,5 +1,6 @@
 package fr.miage.collectivit.usersservice.controller;
 
+import fr.miage.collectivit.usersservice.config.OpenApiConfig;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
@@ -8,6 +9,7 @@ import fr.miage.collectivit.usersservice.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -40,7 +42,8 @@ public class UserProfileController {
   @GetMapping("/{userId}")
   @Operation(
       summary = "Get user profile",
-      description = "Retrieves user profile details by public user ID")
+      description = "Retrieves user profile details by public user ID",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "User profile found"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
@@ -52,7 +55,8 @@ public class UserProfileController {
   @PutMapping("/{userId}")
   @Operation(
       summary = "Update user profile",
-      description = "Updates personal details for the specified user")
+      description = "Updates personal details for the specified user",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "User profile updated"),
     @ApiResponse(responseCode = "400", description = "Invalid request payload"),
@@ -66,7 +70,8 @@ public class UserProfileController {
   @DeleteMapping("/{userId}")
   @Operation(
       summary = "Delete user profile",
-      description = "Deletes user profile by public user ID")
+      description = "Deletes user profile by public user ID",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "User profile successfully deleted"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
@@ -79,7 +84,8 @@ public class UserProfileController {
   @GetMapping("/{userId}/vehicles")
   @Operation(
       summary = "Get user vehicles",
-      description = "Retrieves the list of registered vehicles for a user")
+      description = "Retrieves the list of registered vehicles for a user",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "List of vehicles"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
@@ -91,7 +97,8 @@ public class UserProfileController {
   @PostMapping("/{userId}/vehicles")
   @Operation(
       summary = "Add vehicle",
-      description = "Associates a new license plate to the specified user")
+      description = "Associates a new license plate to the specified user",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Vehicle successfully added"),
     @ApiResponse(responseCode = "400", description = "Invalid license plate"),
@@ -110,7 +117,8 @@ public class UserProfileController {
   @DeleteMapping("/{userId}/vehicles/{vehicleId}")
   @Operation(
       summary = "Remove vehicle",
-      description = "Disassociates a vehicle from the specified user")
+      description = "Disassociates a vehicle from the specified user",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Vehicle successfully removed"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = "User or vehicle not found")

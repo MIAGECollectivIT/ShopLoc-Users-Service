@@ -10,16 +10,19 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final String PROBLEM_BASE_URL = "https://errors.shoploc.com/";
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ProblemDetail handleValidationExceptions(MethodArgumentNotValidException ex) {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.BAD_REQUEST, "Validation failed for request parameters");
-    problem.setType(URI.create("https://errors.shoploc.com/validation-error"));
+    problem.setType(URI.create(PROBLEM_BASE_URL + "validation-error"));
 
     Map<String, String> errors = new HashMap<>();
     for (FieldError error : ex.getBindingResult().getFieldErrors()) {
@@ -32,14 +35,14 @@ public class GlobalExceptionHandler {
   @ExceptionHandler({UserNotFoundException.class, VehicleNotFoundException.class})
   public ProblemDetail handleNotFoundException(RuntimeException ex) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
-    problem.setType(URI.create("https://errors.shoploc.com/not-found"));
+    problem.setType(URI.create(PROBLEM_BASE_URL + "not-found"));
     return problem;
   }
 
   @ExceptionHandler({EmailAlreadyExistsException.class, VehicleAlreadyExistsException.class})
   public ProblemDetail handleConflictException(RuntimeException ex) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-    problem.setType(URI.create("https://errors.shoploc.com/conflict"));
+    problem.setType(URI.create(PROBLEM_BASE_URL + "conflict"));
     return problem;
   }
 
@@ -48,7 +51,16 @@ public class GlobalExceptionHandler {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.CONFLICT, "Database constraint violation occurred");
-    problem.setType(URI.create("https://errors.shoploc.com/data-integrity-conflict"));
+    problem.setType(URI.create(PROBLEM_BASE_URL + "data-integrity-conflict"));
+    return problem;
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+    String detail =
+        String.format("Parameter '%s' has an invalid value: '%s'", ex.getName(), ex.getValue());
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+    problem.setType(URI.create(PROBLEM_BASE_URL + "type-mismatch"));
     return problem;
   }
 
@@ -56,7 +68,7 @@ public class GlobalExceptionHandler {
   public ProblemDetail handleIllegalArgumentException(IllegalArgumentException ex) {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-    problem.setType(URI.create("https://errors.shoploc.com/bad-request"));
+    problem.setType(URI.create(PROBLEM_BASE_URL + "bad-request"));
     return problem;
   }
 }

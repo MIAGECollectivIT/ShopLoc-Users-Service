@@ -12,6 +12,7 @@ import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -64,7 +65,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public VehicleResponse addVehicle(UUID userId, VehicleRequest request) {
     User user = findUserByPublicId(userId);
-    String plate = request.licensePlate().trim();
+    String plate = request.licensePlate().trim().toUpperCase(Locale.ROOT);
 
     if (user.getLicensePlates() == null) {
       user.setLicensePlates(new ArrayList<>());
@@ -89,7 +90,9 @@ public class UserProfileServiceImpl implements UserProfileService {
       throw new VehicleNotFoundException(vehicleId);
     }
 
-    boolean removed = user.getLicensePlates().removeIf(plate -> plate.equalsIgnoreCase(vehicleId));
+    String targetPlate = vehicleId.trim();
+    boolean removed =
+        user.getLicensePlates().removeIf(plate -> plate.equalsIgnoreCase(targetPlate));
     if (!removed) {
       throw new VehicleNotFoundException(vehicleId);
     }
