@@ -10,9 +10,9 @@ import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
+import fr.miage.collectivit.usersservice.validation.FrenchLicensePlateValidator;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -66,7 +66,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public VehicleResponse addVehicle(UUID userId, VehicleRequest request) {
     User user = findUserByPublicId(userId);
-    String plate = request.licensePlate().trim().toUpperCase(Locale.ROOT);
+    String plate = FrenchLicensePlateValidator.normalize(request.licensePlate());
 
     if (user.getLicensePlates() == null) {
       user.setLicensePlates(new ArrayList<>());
@@ -91,7 +91,7 @@ public class UserProfileServiceImpl implements UserProfileService {
       throw new VehicleNotFoundException(vehicleId);
     }
 
-    String targetPlate = vehicleId.trim();
+    String targetPlate = FrenchLicensePlateValidator.normalize(vehicleId);
     boolean removed =
         user.getLicensePlates().removeIf(plate -> plate.equalsIgnoreCase(targetPlate));
     if (!removed) {

@@ -183,6 +183,19 @@ class UserProfileControllerTest {
   }
 
   @Test
+  void shouldReturnBadRequestWhenAddingInvalidLicensePlate() throws Exception {
+    VehicleRequest request = new VehicleRequest("INVALID-PLATE");
+
+    mockMvc
+        .perform(
+            post("/v1/users/{userId}/vehicles", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.invalid_params.licensePlate").exists());
+  }
+
+  @Test
   void shouldRemoveVehicle() throws Exception {
     doNothing().when(userProfileService).removeVehicle(userId, "AA-123-AA");
 

@@ -218,8 +218,10 @@ In Swagger UI, click the **Authorize** button (padlock icon) to input your JWT t
 │   │   │       ├── util/
 │   │   │       │   └── ClientCodeGenerator.java    # Base62 7-character code generator
 │   │   │       ├── validation/
-│   │   │       │   ├── MinAge.java                 # Minimum age validation annotation
-│   │   │       │   └── MinAgeValidator.java        # Bean Validation constraint validator
+│   │   │       │   ├── FrenchLicensePlate.java          # French license plate validation annotation
+│   │   │       │   ├── FrenchLicensePlateValidator.java # SIV/FNI format validator & normalizer
+│   │   │       │   ├── MinAge.java                      # Minimum age validation annotation
+│   │   │       │   └── MinAgeValidator.java             # Bean Validation constraint validator
 │   │   │       └── UsersServiceApplication.java    # Application entrypoint
 │   │   └── resources/
 │   │       └── application.yaml                    # Application, datasource & security configuration
@@ -243,6 +245,7 @@ In Swagger UI, click the **Authorize** button (padlock icon) to input your JWT t
 │       │       ├── util/
 │       │       │   └── ClientCodeGeneratorTest.java
 │       │       ├── validation/
+│       │       │   ├── FrenchLicensePlateValidatorTest.java
 │       │       │   └── MinAgeValidatorTest.java
 │       │       └── UsersServiceApplicationTests.java
 │       └── resources/

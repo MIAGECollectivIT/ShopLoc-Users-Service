@@ -203,4 +203,30 @@ class UserPasswordSecurityIntegrationTest {
 
     assertThat(userRepository.findByEmail("kevin.junior@example.com")).isEmpty();
   }
+
+  @Test
+  void shouldNormalizeFrenchLicensePlatesAndRejectInvalidOnes() throws Exception {
+    UserRegistrationRequest request =
+        UserRegistrationRequest.builder()
+            .firstName("Paul")
+            .lastName("Galtier")
+            .birthDate(LocalDate.of(1991, 5, 2))
+            .email("paul.plates@example.com")
+            .password("Str0ngP@ss1!")
+            .licensePlates(List.of("aa 123 aa", "1234ab75"))
+            .build();
+
+    mockMvc
+        .perform(
+            post("/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.licensePlates[0]").value("AA-123-AA"))
+        .andExpect(jsonPath("$.licensePlates[1]").value("1234 AB 75"));
+
+    Optional<User> userInDb = userRepository.findByEmail("paul.plates@example.com");
+    assertThat(userInDb).isPresent();
+    assertThat(userInDb.get().getLicensePlates()).containsExactly("AA-123-AA", "1234 AB 75");
+  }
 }

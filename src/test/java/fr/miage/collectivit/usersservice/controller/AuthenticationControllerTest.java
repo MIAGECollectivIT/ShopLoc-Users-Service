@@ -190,4 +190,25 @@ class AuthenticationControllerTest {
         .andExpect(
             jsonPath("$.invalid_params.birthDate").value("User must be at least 18 years old"));
   }
+
+  @Test
+  void shouldReturnBadRequestWhenLicensePlateIsInvalid() throws Exception {
+    UserRegistrationRequest invalidPlateRequest =
+        UserRegistrationRequest.builder()
+            .firstName("Marc")
+            .lastName("Vidal")
+            .birthDate(LocalDate.of(1990, 1, 1))
+            .email("marc.plate@example.com")
+            .password("Str0ngP@ss1!")
+            .licensePlates(List.of("AA-123-OO"))
+            .build();
+
+    mockMvc
+        .perform(
+            post("/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(invalidPlateRequest)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.invalid_params['licensePlates[0]']").exists());
+  }
 }

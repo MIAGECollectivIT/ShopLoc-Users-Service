@@ -1,5 +1,6 @@
 package fr.miage.collectivit.usersservice.dto;
 
+import fr.miage.collectivit.usersservice.validation.FrenchLicensePlate;
 import fr.miage.collectivit.usersservice.validation.MinAge;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -36,7 +37,7 @@ public record UserRegistrationRequest(
                 "Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character")
         @ToString.Exclude
         String password,
-    List<String> licensePlates,
+    List<@FrenchLicensePlate String> licensePlates,
     // Physical card pickup location is optional as the customer can choose not to request a
     // physical card
     @Size(max = 150, message = "Pickup location must not exceed 150 characters")
