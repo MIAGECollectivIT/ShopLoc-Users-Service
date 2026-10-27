@@ -5,7 +5,8 @@ User management microservice for the ShopLoc project (MIAGE Collectiv'IT).
 - [0. Prerequisites](#0-prerequisites)
 - [1. Tech Stack & Dependencies](#1-tech-stack--dependencies)
 - [2. Installation & Setup](#2-installation--setup)
-  - [2.1. Husky](#21-husky)
+  - [2.1. Environment Configuration (.env)](#21-environment-configuration-env)
+  - [2.2. Husky](#22-husky)
 - [3. Launch & Test](#3-launch--test)
   - [3.1 Local Execution (Maven)](#31-local-execution-maven)
   - [3.2 Containerized Execution (Docker & Docker Compose)](#32-containerized-execution-docker--docker-compose)
@@ -47,7 +48,22 @@ User management microservice for the ShopLoc project (MIAGE Collectiv'IT).
 
 ## 2. Installation & Setup
 
-### 2.1. Husky 
+### 2.1. Environment Configuration (.env)
+A template file `.env.example` is provided at the root of the repository. Duplicate it to create your local `.env` configuration:
+```bash
+# Duplicate example file
+cp .env.example .env
+```
+The file defines customizable environment variables for local Docker Compose and standalone runs:
+- `PORT`: Service HTTP port (default `8080`)
+- `DB_HOST`, `DB_PORT`: PostgreSQL connection host and port (`db` for Docker Compose, `localhost` for local IDE)
+- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`: PostgreSQL container credentials
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Spring Boot datasource configuration
+- `JWT_SECRET`: Secret key for JWT Bearer token authentication
+
+> In production (K3s cluster), secrets are provided directly by Kubernetes Secrets (`db-credentials-users`).
+
+### 2.2. Husky 
 > Do not bypass the root initialization. Husky pre-commit hooks are mandatory. Your code will be rejected automatically if quality standards are not met.
 ```bash
 # At the root of the project (Git hooks for linters and tests)
@@ -152,6 +168,7 @@ In Swagger UI, click the **Authorize** button (padlock icon) to input your JWT t
 ## 5. Project structure
 ```
 ├── .dockerignore                # Docker build context exclusions
+├── .env.example                 # Environment variables configuration template
 ├── .github/                     # GitHub Actions workflows (CI & CD)
 │   └── workflows/
 │       ├── CI.yml               # Spotless lint + PMD analysis + Build & Tests
