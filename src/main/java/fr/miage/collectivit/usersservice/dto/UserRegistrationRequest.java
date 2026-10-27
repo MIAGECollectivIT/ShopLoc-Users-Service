@@ -1,5 +1,6 @@
 package fr.miage.collectivit.usersservice.dto;
 
+import fr.miage.collectivit.usersservice.validation.MinAge;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,7 +20,9 @@ public record UserRegistrationRequest(
     @NotBlank(message = "Last name is mandatory")
         @Size(max = 100, message = "Last name must not exceed 100 characters")
         String lastName,
-    @NotNull(message = "Birth date is mandatory") @Past(message = "Birth date must be in the past")
+    @NotNull(message = "Birth date is mandatory")
+        @Past(message = "Birth date must be in the past")
+        @MinAge(value = 18, message = "User must be at least 18 years old")
         LocalDate birthDate,
     @NotBlank(message = "Email is mandatory")
         @Email(message = "Email format is invalid")

@@ -180,4 +180,27 @@ class UserPasswordSecurityIntegrationTest {
     assertThat(persisted).isPresent();
     assertThat(persisted.get().getPickupLocation()).isNull();
   }
+
+  @Test
+  void shouldRejectRegistrationWhenUserIsUnder18YearsOld() throws Exception {
+    UserRegistrationRequest minorRequest =
+        UserRegistrationRequest.builder()
+            .firstName("Kevin")
+            .lastName("Junior")
+            .birthDate(LocalDate.now().minusYears(16))
+            .email("kevin.junior@example.com")
+            .password("ValidP@ss123!")
+            .build();
+
+    mockMvc
+        .perform(
+            post("/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(minorRequest)))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.invalid_params.birthDate").value("User must be at least 18 years old"));
+
+    assertThat(userRepository.findByEmail("kevin.junior@example.com")).isEmpty();
+  }
 }

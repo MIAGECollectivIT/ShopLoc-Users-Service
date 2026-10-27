@@ -169,4 +169,25 @@ class AuthenticationControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.invalid_params").exists());
   }
+
+  @Test
+  void shouldReturnBadRequestWhenUserIsUnder18() throws Exception {
+    UserRegistrationRequest minorRequest =
+        UserRegistrationRequest.builder()
+            .firstName("Tom")
+            .lastName("Sawyer")
+            .birthDate(LocalDate.now().minusYears(17))
+            .email("tom.minor@example.com")
+            .password("Str0ngP@ss1!")
+            .build();
+
+    mockMvc
+        .perform(
+            post("/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(minorRequest)))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.invalid_params.birthDate").value("User must be at least 18 years old"));
+  }
 }
