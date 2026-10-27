@@ -211,6 +211,7 @@ In Swagger UI, click the **Authorize** button (padlock icon) to input your JWT t
 │       │       ├── controller/
 │       │       │   ├── AuthenticationControllerTest.java
 │       │       │   ├── LoyaltyCardControllerTest.java
+│       │       │   ├── UserPasswordSecurityIntegrationTest.java
 │       │       │   ├── UserProfileControllerTest.java
 │       │       │   └── UsersStatusControllerTest.java
 │       │       ├── repository/

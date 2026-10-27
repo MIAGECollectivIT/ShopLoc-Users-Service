@@ -40,6 +40,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 @ExtendWith(MockitoExtension.class)
 class UserProfileControllerTest {
 
+  private static final String NOT_FOUND_STATUS = "404";
+  private static final String USER_NOT_FOUND_MSG = "User not found";
+
   @Mock private UserProfileService userProfileService;
 
   @InjectMocks private UserProfileController userProfileController;
@@ -69,6 +72,7 @@ class UserProfileControllerTest {
             .lastName("Martin")
             .birthDate(LocalDate.of(1988, 4, 12))
             .clientCode("sM88kL9")
+            .pickupLocation("Mairie")
             .licensePlates(List.of("AA-123-AA"))
             .build();
 
@@ -134,20 +138,23 @@ class UserProfileControllerTest {
 
   @Test
   void shouldGetVehicles() throws Exception {
-    when(userProfileService.getVehicles(userId))
-        .thenReturn(List.of(new VehicleResponse("AA-123-AA", "AA-123-AA")));
+    List<VehicleResponse> vehicles =
+        List.of(
+            VehicleResponse.fromLicensePlate("AA-123-AA"),
+            VehicleResponse.fromLicensePlate("BB-456-BB"));
+    when(userProfileService.getVehicles(userId)).thenReturn(vehicles);
 
     mockMvc
         .perform(get("/v1/users/{userId}/vehicles", userId))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].vehicleId").value("AA-123-AA"))
+        .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
   }
 
   @Test
   void shouldAddVehicle() throws Exception {
-    VehicleRequest request = new VehicleRequest("BB-456-BB");
-    VehicleResponse response = new VehicleResponse("BB-456-BB", "BB-456-BB");
+    VehicleRequest request = new VehicleRequest("cc-789-dd");
+    VehicleResponse response = VehicleResponse.fromLicensePlate("CC-789-DD");
 
     when(userProfileService.addVehicle(eq(userId), any())).thenReturn(response);
 
@@ -157,20 +164,21 @@ class UserProfileControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isCreated())
-        .andExpect(header().string("Location", "/v1/users/" + userId + "/vehicles/BB-456-BB"))
-        .andExpect(jsonPath("$.vehicleId").value("BB-456-BB"));
+        .andExpect(header().string("Location", "/v1/users/" + userId + "/vehicles/CC-789-DD"))
+        .andExpect(jsonPath("$.licensePlate").value("CC-789-DD"));
   }
 
   @Test
-  void shouldReturnConflictWhenVehicleAlreadyExists() throws Exception {
+  void shouldReturnConflictWhenVehicleAlreadyRegistered() throws Exception {
+    VehicleRequest request = new VehicleRequest("AA-123-AA");
     when(userProfileService.addVehicle(eq(userId), any()))
-        .thenThrow(new VehicleAlreadyExistsException("BB-456-BB"));
+        .thenThrow(new VehicleAlreadyExistsException("AA-123-AA"));
 
     mockMvc
         .perform(
             post("/v1/users/{userId}/vehicles", userId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new VehicleRequest("BB-456-BB"))))
+                .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isConflict());
   }
 
@@ -184,13 +192,13 @@ class UserProfileControllerTest {
   }
 
   @Test
-  void shouldReturnNotFoundWhenRemovingNonExistentVehicle() throws Exception {
-    doThrow(new VehicleNotFoundException("UNKNOWN"))
+  void shouldReturnNotFoundWhenVehicleNotFoundOnRemove() throws Exception {
+    doThrow(new VehicleNotFoundException("ZZ-999-ZZ"))
         .when(userProfileService)
-        .removeVehicle(userId, "UNKNOWN");
+        .removeVehicle(userId, "ZZ-999-ZZ");
 
     mockMvc
-        .perform(delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "UNKNOWN"))
+        .perform(delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "ZZ-999-ZZ"))
         .andExpect(status().isNotFound());
   }
 }

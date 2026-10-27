@@ -40,6 +40,7 @@ class LoyaltyCardIdentificationServiceTest {
             .lastName("Garnier")
             .birthDate(LocalDate.of(1982, 11, 3))
             .clientCode(cardNumber)
+            .pickupLocation("Mairie")
             .build();
 
     when(userRepository.findByClientCode(cardNumber)).thenReturn(Optional.of(user));

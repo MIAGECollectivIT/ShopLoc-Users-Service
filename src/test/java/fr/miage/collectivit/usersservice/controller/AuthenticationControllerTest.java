@@ -70,7 +70,7 @@ class AuthenticationControllerTest {
             .lastName("Dupont")
             .birthDate(LocalDate.of(1990, 1, 1))
             .email("client@test.com")
-            .password("password123")
+            .password("P@ssw0rd123!")
             .pickupLocation("Mairie")
             .licensePlates(List.of("AA-123-AA"))
             .build();
@@ -88,6 +88,45 @@ class AuthenticationControllerTest {
   }
 
   @Test
+  void shouldRegisterUserWithoutPickupLocationAndReturnCreated() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UserResponse response =
+        UserResponse.builder()
+            .id(userId)
+            .email("digital.only@test.com")
+            .role(UserRole.CLIENT)
+            .firstName("Julie")
+            .lastName("Roux")
+            .birthDate(LocalDate.of(1995, 5, 20))
+            .clientCode("jR55kL2")
+            .pickupLocation(null)
+            .licensePlates(List.of())
+            .build();
+
+    when(authenticationService.register(any())).thenReturn(response);
+
+    UserRegistrationRequest request =
+        UserRegistrationRequest.builder()
+            .firstName("Julie")
+            .lastName("Roux")
+            .birthDate(LocalDate.of(1995, 5, 20))
+            .email("digital.only@test.com")
+            .password("P@ssw0rd123!")
+            .pickupLocation(null)
+            .build();
+
+    mockMvc
+        .perform(
+            post("/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(header().string("Location", "/v1/users/" + userId))
+        .andExpect(jsonPath("$.id").value(userId.toString()))
+        .andExpect(jsonPath("$.pickupLocation").doesNotExist());
+  }
+
+  @Test
   void shouldReturnConflictWhenEmailAlreadyExists() throws Exception {
     when(authenticationService.register(any()))
         .thenThrow(new EmailAlreadyExistsException("existing@test.com"));
@@ -98,7 +137,8 @@ class AuthenticationControllerTest {
             .lastName("Dupont")
             .birthDate(LocalDate.of(1990, 1, 1))
             .email("existing@test.com")
-            .password("password123")
+            .password("P@ssw0rd123!")
+            .pickupLocation("Mairie")
             .build();
 
     mockMvc

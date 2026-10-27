@@ -1,5 +1,7 @@
 package fr.miage.collectivit.usersservice.entity;
 
+import static fr.miage.collectivit.usersservice.entity.UserRole.CLIENT;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -51,7 +53,7 @@ public class User {
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 20)
   @Builder.Default
-  private UserRole role = UserRole.CLIENT;
+  private UserRole role = CLIENT;
 
   @Column(name = "first_name", nullable = false, length = 100)
   private String firstName;
@@ -65,7 +67,8 @@ public class User {
   @Column(name = "client_code", nullable = false, unique = true, length = 7)
   private String clientCode;
 
-  // Physical card pickup point (e.g., town hall or partner shop)
+  // Physical card pickup location is optional as the customer can choose not to request a physical
+  // card
   @Column(name = "pickup_location", length = 150)
   private String pickupLocation;
 

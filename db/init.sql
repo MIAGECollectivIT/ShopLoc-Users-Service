@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_name VARCHAR(100) NOT NULL,
     birth_date DATE NOT NULL,
     client_code VARCHAR(7) NOT NULL UNIQUE,
+    -- Physical card pickup location is optional as the customer can choose not to request a physical card
     pickup_location VARCHAR(150),
     license_plates TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

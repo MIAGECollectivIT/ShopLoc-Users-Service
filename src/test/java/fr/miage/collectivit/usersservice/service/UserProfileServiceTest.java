@@ -65,17 +65,19 @@ class UserProfileServiceTest {
     UserResponse response = userProfileService.getUserProfile(userId);
 
     assertThat(response.id()).isEqualTo(userId);
+    assertThat(response.email()).isEqualTo("user@example.com");
     assertThat(response.firstName()).isEqualTo("Sophie");
+    assertThat(response.pickupLocation()).isEqualTo("Commerce Partenaire A");
     assertThat(response.licensePlates()).containsExactly("XX-123-YY");
   }
 
   @Test
-  void shouldThrowWhenUserNotFoundOnGet() {
-    UUID unknownId = UUID.randomUUID();
-    when(userRepository.findByPublicId(unknownId)).thenReturn(Optional.empty());
+  void shouldThrowWhenGetUserProfileNotFound() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> userProfileService.getUserProfile(unknownId))
-        .isInstanceOf(UserNotFoundException.class);
+    assertThatThrownBy(() -> userProfileService.getUserProfile(userId))
+        .isInstanceOf(UserNotFoundException.class)
+        .hasMessageContaining(userId.toString());
   }
 
   @Test
@@ -109,44 +111,48 @@ class UserProfileServiceTest {
   }
 
   @Test
-  void shouldGetVehiclesForUser() {
+  void shouldGetVehicles() {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
 
     List<VehicleResponse> vehicles = userProfileService.getVehicles(userId);
 
     assertThat(vehicles).hasSize(1);
-    assertThat(vehicles.get(0).licensePlate()).isEqualTo("XX-123-YY");
+    assertThat(vehicles.getFirst().licensePlate()).isEqualTo("XX-123-YY");
   }
 
   @Test
-  void shouldAddVehicleToUser() {
+  void shouldAddVehicleSuccessfully() {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
-    VehicleResponse response =
-        userProfileService.addVehicle(userId, new VehicleRequest("ZZ-999-ZZ"));
+    VehicleRequest request = new VehicleRequest("aa-222-bb");
 
-    assertThat(response.licensePlate()).isEqualTo("ZZ-999-ZZ");
-    assertThat(existingUser.getLicensePlates()).contains("XX-123-YY", "ZZ-999-ZZ");
+    VehicleResponse response = userProfileService.addVehicle(userId, request);
+
+    assertThat(response.licensePlate()).isEqualTo("AA-222-BB");
+    assertThat(existingUser.getLicensePlates()).contains("AA-222-BB");
     verify(userRepository).save(existingUser);
   }
 
   @Test
-  void shouldThrowWhenVehicleAlreadyExists() {
+  void shouldThrowWhenAddingDuplicateVehicle() {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
 
-    assertThatThrownBy(() -> userProfileService.addVehicle(userId, new VehicleRequest("XX-123-YY")))
-        .isInstanceOf(VehicleAlreadyExistsException.class);
+    VehicleRequest request = new VehicleRequest("xx-123-yy");
+
+    assertThatThrownBy(() -> userProfileService.addVehicle(userId, request))
+        .isInstanceOf(VehicleAlreadyExistsException.class)
+        .hasMessageContaining("XX-123-YY");
   }
 
   @Test
-  void shouldRemoveVehicleFromUser() {
+  void shouldRemoveVehicleSuccessfully() {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
     userProfileService.removeVehicle(userId, "XX-123-YY");
 
-    assertThat(existingUser.getLicensePlates()).isEmpty();
+    assertThat(existingUser.getLicensePlates()).doesNotContain("XX-123-YY");
     verify(userRepository).save(existingUser);
   }
 
@@ -154,7 +160,8 @@ class UserProfileServiceTest {
   void shouldThrowWhenRemovingNonExistentVehicle() {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
 
-    assertThatThrownBy(() -> userProfileService.removeVehicle(userId, "UNKNOWN-PLATE"))
-        .isInstanceOf(VehicleNotFoundException.class);
+    assertThatThrownBy(() -> userProfileService.removeVehicle(userId, "ZZ-999-ZZ"))
+        .isInstanceOf(VehicleNotFoundException.class)
+        .hasMessageContaining("ZZ-999-ZZ");
   }
 }

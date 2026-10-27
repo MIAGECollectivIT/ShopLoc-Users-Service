@@ -50,6 +50,7 @@ class LoyaltyCardControllerTest {
             .lastName("Dupont")
             .birthDate(LocalDate.of(1990, 1, 1))
             .clientCode(cardNumber)
+            .pickupLocation("Mairie")
             .build();
 
     when(loyaltyCardIdentificationService.identifyByCardNumber(cardNumber)).thenReturn(response);

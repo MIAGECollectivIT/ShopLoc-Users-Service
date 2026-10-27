@@ -17,5 +17,7 @@ public record UserUpdateRequest(
         String lastName,
     @NotNull(message = "Birth date is mandatory") @Past(message = "Birth date must be in the past")
         LocalDate birthDate,
+    // Physical card pickup location is optional as the customer can choose not to request a
+    // physical card
     @Size(max = 150, message = "Pickup location must not exceed 150 characters")
         String pickupLocation) {}

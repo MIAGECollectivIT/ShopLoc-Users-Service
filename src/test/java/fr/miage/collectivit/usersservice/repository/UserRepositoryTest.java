@@ -55,6 +55,27 @@ class UserRepositoryTest {
   }
 
   @Test
+  void shouldSaveAndRetrieveUserWithoutPickupLocation() {
+    User user =
+        User.builder()
+            .email("no.pickup@example.com")
+            .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
+            .role(UserRole.CLIENT)
+            .firstName("Chloe")
+            .lastName("Giraud")
+            .birthDate(LocalDate.of(1996, 9, 12))
+            .clientCode("cG96kL1")
+            .pickupLocation(null)
+            .build();
+
+    User saved = userRepository.save(user);
+
+    Optional<User> foundByPublicId = userRepository.findByPublicId(saved.getPublicId());
+    assertThat(foundByPublicId).isPresent();
+    assertThat(foundByPublicId.get().getPickupLocation()).isNull();
+  }
+
+  @Test
   void shouldFindUserByEmailAndCheckExistence() {
     User user =
         User.builder()
@@ -64,6 +85,7 @@ class UserRepositoryTest {
             .lastName("Martin")
             .birthDate(LocalDate.of(1985, 3, 20))
             .clientCode("c1D2e3F")
+            .pickupLocation("Mairie")
             .licensePlates(new ArrayList<>())
             .build();
 
@@ -87,6 +109,7 @@ class UserRepositoryTest {
             .lastName("Durand")
             .birthDate(LocalDate.of(1995, 12, 1))
             .clientCode("xY9z0W1")
+            .pickupLocation("Commerce Partenaire B")
             .build();
 
     userRepository.save(user);
@@ -109,6 +132,7 @@ class UserRepositoryTest {
             .lastName("User")
             .birthDate(LocalDate.of(2000, 1, 1))
             .clientCode("code001")
+            .pickupLocation("Mairie")
             .build();
 
     userRepository.saveAndFlush(user1);
@@ -121,6 +145,7 @@ class UserRepositoryTest {
             .lastName("User")
             .birthDate(LocalDate.of(2000, 2, 2))
             .clientCode("code002")
+            .pickupLocation("Mairie")
             .build();
 
     assertThatThrownBy(() -> userRepository.saveAndFlush(user2))
@@ -137,6 +162,7 @@ class UserRepositoryTest {
             .lastName("Lemoine")
             .birthDate(LocalDate.of(1992, 8, 10))
             .clientCode("kL3mN5P")
+            .pickupLocation("Mairie")
             .build();
 
     User saved = userRepository.save(user);

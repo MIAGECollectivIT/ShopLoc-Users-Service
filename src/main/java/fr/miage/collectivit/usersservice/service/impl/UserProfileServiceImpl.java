@@ -35,10 +35,11 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public UserResponse updateUserProfile(UUID userId, UserUpdateRequest request) {
     User user = findUserByPublicId(userId);
-    user.setFirstName(request.firstName());
-    user.setLastName(request.lastName());
+    user.setFirstName(request.firstName().trim());
+    user.setLastName(request.lastName().trim());
     user.setBirthDate(request.birthDate());
-    user.setPickupLocation(request.pickupLocation());
+    user.setPickupLocation(
+        request.pickupLocation() != null ? request.pickupLocation().trim() : null);
 
     User savedUser = userRepository.save(user);
     return UserResponse.fromEntity(savedUser);

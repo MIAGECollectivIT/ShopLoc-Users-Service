@@ -9,6 +9,7 @@ import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.service.AuthenticationService;
 import fr.miage.collectivit.usersservice.util.ClientCodeGenerator;
 import java.util.ArrayList;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,8 +26,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
   @Override
   @Transactional
   public UserResponse register(UserRegistrationRequest request) {
-    if (userRepository.existsByEmail(request.email())) {
-      throw new EmailAlreadyExistsException(request.email());
+    String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+    if (userRepository.existsByEmail(normalizedEmail)) {
+      throw new EmailAlreadyExistsException(normalizedEmail);
     }
 
     String clientCode = generateUniqueClientCode();
@@ -34,14 +36,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     User user =
         User.builder()
-            .firstName(request.firstName())
-            .lastName(request.lastName())
+            .firstName(request.firstName().trim())
+            .lastName(request.lastName().trim())
             .birthDate(request.birthDate())
-            .email(request.email())
+            .email(normalizedEmail)
             .passwordHash(hashedPassword)
             .role(UserRole.CLIENT)
             .clientCode(clientCode)
-            .pickupLocation(request.pickupLocation())
+            .pickupLocation(
+                request.pickupLocation() != null ? request.pickupLocation().trim() : null)
             .licensePlates(
                 request.licensePlates() != null
                     ? new ArrayList<>(request.licensePlates())
