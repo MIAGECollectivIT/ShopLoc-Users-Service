@@ -103,7 +103,7 @@ npm install
 
 #### Docker Compose (Recommended)
 A `docker-compose.yml` file is provided for multi-container development, running both the PostgreSQL 16 database and the Spring Boot backend:
-- The database is initialized automatically with [db/init.sql](db/init.sql).
+- The database is initialized and migrated automatically with Flyway ([V1__create_users_table.sql](src/main/resources/db/migration/V1__create_users_table.sql)).
 - Data persists across runs via the `db_data` Docker volume.
 - The backend waits for the database to become healthy before starting.
 
