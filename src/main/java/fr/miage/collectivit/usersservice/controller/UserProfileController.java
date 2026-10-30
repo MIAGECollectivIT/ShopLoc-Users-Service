@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,10 +35,30 @@ import org.springframework.web.bind.annotation.RestController;
     description = "Operations related to managing user profiles and vehicles")
 public class UserProfileController {
 
+  private static final String OK_STATUS = "200";
   private static final String NOT_FOUND_STATUS = "404";
   private static final String USER_NOT_FOUND_MSG = "User not found";
 
   private final UserProfileService userProfileService;
+
+  @GetMapping("/me")
+  @Operation(
+      summary = "Get current authenticated user profile",
+      description = "Retrieves current user profile details using X-User-Id or X-User-Email header",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
+  @ApiResponses({
+    @ApiResponse(responseCode = OK_STATUS, description = "User profile found"),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized or missing authentication headers"),
+    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
+  })
+  public ResponseEntity<UserResponse> getCurrentUserProfile(
+      @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+      @RequestHeader(value = "X-User-Email", required = false) String userEmailHeader) {
+    return ResponseEntity.ok(
+        userProfileService.getCurrentUserProfile(userIdHeader, userEmailHeader));
+  }
 
   @GetMapping("/{userId}")
   @Operation(
@@ -45,7 +66,7 @@ public class UserProfileController {
       description = "Retrieves user profile details by public user ID",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "User profile found"),
+    @ApiResponse(responseCode = OK_STATUS, description = "User profile found"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
   })
   public ResponseEntity<UserResponse> getUserProfile(@PathVariable UUID userId) {
@@ -58,7 +79,7 @@ public class UserProfileController {
       description = "Updates personal details for the specified user",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "User profile updated"),
+    @ApiResponse(responseCode = OK_STATUS, description = "User profile updated"),
     @ApiResponse(responseCode = "400", description = "Invalid request payload"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
   })
@@ -87,7 +108,7 @@ public class UserProfileController {
       description = "Retrieves the list of registered vehicles for a user",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "List of vehicles"),
+    @ApiResponse(responseCode = OK_STATUS, description = "List of vehicles"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
   })
   public ResponseEntity<List<VehicleResponse>> getVehicles(@PathVariable UUID userId) {

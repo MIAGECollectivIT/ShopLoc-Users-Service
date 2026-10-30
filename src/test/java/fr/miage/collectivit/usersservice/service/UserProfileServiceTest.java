@@ -164,4 +164,54 @@ class UserProfileServiceTest {
         .isInstanceOf(VehicleNotFoundException.class)
         .hasMessageContaining("ZZ-999-ZZ");
   }
+
+  @Test
+  void shouldGetCurrentUserProfileByUuid() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+
+    UserResponse response = userProfileService.getCurrentUserProfile(userId.toString(), null);
+
+    assertThat(response).isNotNull();
+    assertThat(response.id()).isEqualTo(userId);
+    assertThat(response.email()).isEqualTo("user@example.com");
+  }
+
+  @Test
+  void shouldGetCurrentUserProfileByNumericId() {
+    when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+
+    UserResponse response = userProfileService.getCurrentUserProfile("1", null);
+
+    assertThat(response).isNotNull();
+    assertThat(response.id()).isEqualTo(userId);
+    assertThat(response.email()).isEqualTo("user@example.com");
+  }
+
+  @Test
+  void shouldGetCurrentUserProfileByEmail() {
+    when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(existingUser));
+
+    UserResponse response = userProfileService.getCurrentUserProfile(null, "user@example.com");
+
+    assertThat(response).isNotNull();
+    assertThat(response.id()).isEqualTo(userId);
+    assertThat(response.email()).isEqualTo("user@example.com");
+  }
+
+  @Test
+  void shouldThrowUnauthorizedWhenIdentityHeadersMissing() {
+    assertThatThrownBy(() -> userProfileService.getCurrentUserProfile(null, null))
+        .isInstanceOf(fr.miage.collectivit.usersservice.exception.UnauthorizedException.class);
+
+    assertThatThrownBy(() -> userProfileService.getCurrentUserProfile("  ", ""))
+        .isInstanceOf(fr.miage.collectivit.usersservice.exception.UnauthorizedException.class);
+  }
+
+  @Test
+  void shouldThrowUserNotFoundWhenIdentityNotMatching() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> userProfileService.getCurrentUserProfile(userId.toString(), null))
+        .isInstanceOf(UserNotFoundException.class);
+  }
 }
