@@ -32,6 +32,14 @@ public class GlobalExceptionHandler {
     return problem;
   }
 
+  @ExceptionHandler(UnauthorizedException.class)
+  public ProblemDetail handleUnauthorizedException(UnauthorizedException ex) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    problem.setType(URI.create(PROBLEM_BASE_URL + "unauthorized"));
+    return problem;
+  }
+
   @ExceptionHandler({UserNotFoundException.class, VehicleNotFoundException.class})
   public ProblemDetail handleNotFoundException(RuntimeException ex) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());

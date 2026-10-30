@@ -26,6 +26,13 @@ public class UserProfileServiceImpl implements UserProfileService {
 
   @Override
   @Transactional(readOnly = true)
+  public UserResponse getCurrentUserProfile(String userIdHeader, String userEmailHeader) {
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    return UserResponse.fromEntity(user);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public UserResponse getUserProfile(UUID userId) {
     User user = findUserByPublicId(userId);
     return UserResponse.fromEntity(user);

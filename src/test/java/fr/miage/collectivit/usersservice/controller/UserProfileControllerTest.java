@@ -62,6 +62,44 @@ class UserProfileControllerTest {
   }
 
   @Test
+  void shouldGetCurrentUserProfileWithHeader() throws Exception {
+    UserResponse response =
+        UserResponse.builder()
+            .id(userId)
+            .email("client@test.com")
+            .role(UserRole.CLIENT)
+            .firstName("Sophie")
+            .lastName("Martin")
+            .birthDate(LocalDate.of(1988, 4, 12))
+            .clientCode("sM88kL9")
+            .pickupLocation("Mairie")
+            .licensePlates(List.of("AA-123-AA"))
+            .build();
+
+    when(userProfileService.getCurrentUserProfile(userId.toString(), null)).thenReturn(response);
+
+    mockMvc
+        .perform(get("/v1/users/me").header("X-User-Id", userId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(userId.toString()))
+        .andExpect(jsonPath("$.email").value("client@test.com"))
+        .andExpect(jsonPath("$.firstName").value("Sophie"));
+  }
+
+  @Test
+  void shouldReturnUnauthorizedWhenMeCalledWithoutHeaders() throws Exception {
+    when(userProfileService.getCurrentUserProfile(null, null))
+        .thenThrow(
+            new fr.miage.collectivit.usersservice.exception.UnauthorizedException(
+                "Missing authentication identity headers"));
+
+    mockMvc
+        .perform(get("/v1/users/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.detail").value("Missing authentication identity headers"));
+  }
+
+  @Test
   void shouldGetUserProfile() throws Exception {
     UserResponse response =
         UserResponse.builder()

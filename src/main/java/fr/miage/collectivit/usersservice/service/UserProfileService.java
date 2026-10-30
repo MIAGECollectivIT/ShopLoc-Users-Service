@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface UserProfileService {
 
+  UserResponse getCurrentUserProfile(String userIdHeader, String userEmailHeader);
+
   UserResponse getUserProfile(UUID userId);
 
   UserResponse updateUserProfile(UUID userId, UserUpdateRequest request);
