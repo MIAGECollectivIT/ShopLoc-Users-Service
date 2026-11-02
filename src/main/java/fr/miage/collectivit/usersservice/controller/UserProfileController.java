@@ -1,16 +1,21 @@
 package fr.miage.collectivit.usersservice.controller;
 
 import fr.miage.collectivit.usersservice.config.OpenApiConfig;
+import fr.miage.collectivit.usersservice.dto.PartnerResponse;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
+import fr.miage.collectivit.usersservice.dto.UserStoreLinkRequest;
 import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
+import fr.miage.collectivit.usersservice.exception.ForbiddenException;
+import fr.miage.collectivit.usersservice.security.JwtAuthInterceptor;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -25,6 +30,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,44 +39,127 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(
     name = "User Profile",
     description = "Operations related to managing user profiles and vehicles")
+@SuppressWarnings("PMD.ExcessiveImports")
 public class UserProfileController {
 
   private static final String OK_STATUS = "200";
   private static final String NOT_FOUND_STATUS = "404";
-  private static final String USER_NOT_FOUND_MSG = "User not found";
+  private static final String USER_NOT_FOUND_MSG = "User profile not found";
+  private static final String ROLE_ADMIN = "ADMIN";
 
   private final UserProfileService userProfileService;
 
   @GetMapping("/me")
   @Operation(
-      summary = "Get current authenticated user profile",
-      description = "Retrieves current user profile details using X-User-Id or X-User-Email header",
+      summary = "Get current user profile",
+      description =
+          "Retrieves the authenticated user's profile using identity headers or JWT session",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "User profile found"),
+    @ApiResponse(responseCode = OK_STATUS, description = "Current user profile retrieved"),
     @ApiResponse(
         responseCode = "401",
-        description = "Unauthorized or missing authentication headers"),
+        description = "Unauthorized - Missing authentication headers or token"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
   })
   public ResponseEntity<UserResponse> getCurrentUserProfile(
       @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
-      @RequestHeader(value = "X-User-Email", required = false) String userEmailHeader) {
+      @RequestHeader(value = "X-User-Email", required = false) String userEmailHeader,
+      HttpServletRequest servletRequest) {
+    String effectiveUserId = userIdHeader;
+    if ((effectiveUserId == null || effectiveUserId.isBlank()) && servletRequest != null) {
+      effectiveUserId = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ID);
+    }
+    String effectiveUserEmail = userEmailHeader;
+    if ((effectiveUserEmail == null || effectiveUserEmail.isBlank()) && servletRequest != null) {
+      effectiveUserEmail = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_EMAIL);
+    }
     return ResponseEntity.ok(
-        userProfileService.getCurrentUserProfile(userIdHeader, userEmailHeader));
+        userProfileService.getCurrentUserProfile(effectiveUserId, effectiveUserEmail));
+  }
+
+  public ResponseEntity<UserResponse> getCurrentUserProfile(
+      String userIdHeader, String userEmailHeader) {
+    return getCurrentUserProfile(userIdHeader, userEmailHeader, null);
+  }
+
+  @GetMapping("/partners")
+  @Operation(
+      summary = "List partner merchants",
+      description = "Retrieves active registered partners for store linking")
+  public ResponseEntity<List<PartnerResponse>> getPartners(
+      @RequestParam(value = "query", required = false) String query,
+      @RequestParam(value = "limit", required = false, defaultValue = "20") int limit) {
+    return ResponseEntity.ok(userProfileService.getPartners(query, limit));
   }
 
   @GetMapping("/{userId}")
   @Operation(
       summary = "Get user profile",
-      description = "Retrieves user profile details by public user ID",
+      description = "Retrieves user profile details by public user UUID or internal numeric ID",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = OK_STATUS, description = "User profile found"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
+    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Access denied: cannot view another user's personal profile")
   })
-  public ResponseEntity<UserResponse> getUserProfile(@PathVariable UUID userId) {
-    return ResponseEntity.ok(userProfileService.getUserProfile(userId));
+  public ResponseEntity<UserResponse> getUserProfile(
+      @PathVariable String userId, HttpServletRequest servletRequest) {
+    UserResponse userResponse;
+    try {
+      UUID publicId = UUID.fromString(userId.trim());
+      userResponse = userProfileService.getUserProfile(publicId);
+    } catch (IllegalArgumentException notUuid) {
+      userResponse = userProfileService.getUserProfileByIdentifier(userId);
+    }
+    checkUserAccess(userResponse, servletRequest);
+    return ResponseEntity.ok(userResponse);
+  }
+
+  public ResponseEntity<UserResponse> getUserProfile(String userId) {
+    return getUserProfile(userId, null);
+  }
+
+  private void checkUserAccess(UserResponse userResponse, HttpServletRequest servletRequest) {
+    if (servletRequest == null) {
+      return;
+    }
+    String role = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ROLE);
+    String authUserId = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ID);
+    String authEmail = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_EMAIL);
+
+    if (role == null && authUserId == null && authEmail == null) {
+      return;
+    }
+
+    if (ROLE_ADMIN.equalsIgnoreCase(role)) {
+      return;
+    }
+
+    boolean isSelf =
+        (authUserId != null && authUserId.equalsIgnoreCase(userResponse.id().toString()))
+            || (authEmail != null && authEmail.equalsIgnoreCase(userResponse.email()));
+
+    if (!isSelf) {
+      throw new ForbiddenException(
+          "Accès refusé : vous n'êtes pas autorisé à consulter les données personnelles de cet utilisateur.");
+    }
+  }
+
+  @PostMapping("/stores")
+  @Operation(
+      summary = "Link store to user",
+      description = "Records a relationship between a partner user and a store",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
+  @ApiResponses({
+    @ApiResponse(responseCode = OK_STATUS, description = "Store successfully linked to user"),
+    @ApiResponse(responseCode = "400", description = "Invalid request payload")
+  })
+  public ResponseEntity<Void> linkStoreToUser(@Valid @RequestBody UserStoreLinkRequest request) {
+    userProfileService.linkStoreToUser(request.userId(), request.storeId());
+    return ResponseEntity.ok().build();
   }
 
   @PutMapping("/{userId}")

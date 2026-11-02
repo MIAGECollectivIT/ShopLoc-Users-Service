@@ -34,7 +34,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-devuser}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-devpassword}
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      JWT_SECRET: ${JWT_SECRET:-dGhpc2lzYXZlcnlzZWNyZXRqd3R1c2Vyc3NlcnZpY2VrZXkxMjM0NTY=}
+      JWT_PRIVATE_KEY: "${JWT_PRIVATE_KEY:-}"
+      JWT_PUBLIC_KEY: "${JWT_PUBLIC_KEY:-}"
+      JWT_KEY_ID: "${JWT_KEY_ID:-shoploc-key-1}"
     depends_on:
       db:
         condition: service_healthy

@@ -2,12 +2,16 @@ package fr.miage.collectivit.usersservice.service.impl;
 
 import static java.util.Locale.ROOT;
 
+import fr.miage.collectivit.usersservice.dto.AuthResponse;
+import fr.miage.collectivit.usersservice.dto.LoginRequest;
 import fr.miage.collectivit.usersservice.dto.UserRegistrationRequest;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.EmailAlreadyExistsException;
+import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
+import fr.miage.collectivit.usersservice.security.JwtTokenService;
 import fr.miage.collectivit.usersservice.service.AuthenticationService;
 import fr.miage.collectivit.usersservice.util.ClientCodeGenerator;
 import fr.miage.collectivit.usersservice.validation.FrenchLicensePlateValidator;
@@ -30,6 +34,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
   private final PasswordEncoder passwordEncoder;
   private final ClientCodeGenerator clientCodeGenerator;
   private final TransactionTemplate transactionTemplate;
+  private final JwtTokenService jwtTokenService;
 
   @Override
   public UserResponse register(UserRegistrationRequest request) {
@@ -42,6 +47,31 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     User savedUser =
         persistWithClientCodeRetry(request, normalizedEmail, hashedPassword, normalizedPlates);
     return UserResponse.fromEntity(savedUser);
+  }
+
+  @Override
+  public AuthResponse login(LoginRequest request) {
+    String normalizedEmail = request.email().trim().toLowerCase(ROOT);
+    User user =
+        userRepository
+            .findByEmail(normalizedEmail)
+            .orElseThrow(
+                () ->
+                    new UnauthorizedException(
+                        "Identifiants invalides (adresse email ou mot de passe incorrect)"));
+
+    if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+      throw new UnauthorizedException(
+          "Identifiants invalides (adresse email ou mot de passe incorrect)");
+    }
+
+    String token = jwtTokenService.generateToken(user);
+    return AuthResponse.builder()
+        .token(token)
+        .tokenType("Bearer")
+        .expiresIn(jwtTokenService.getExpirationSeconds())
+        .user(UserResponse.fromEntity(user))
+        .build();
   }
 
   private void checkEmailAvailability(String email) {

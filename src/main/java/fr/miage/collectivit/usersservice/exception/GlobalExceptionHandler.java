@@ -40,6 +40,13 @@ public class GlobalExceptionHandler {
     return problem;
   }
 
+  @ExceptionHandler(ForbiddenException.class)
+  public ProblemDetail handleForbiddenException(ForbiddenException ex) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    problem.setType(URI.create(PROBLEM_BASE_URL + "forbidden"));
+    return problem;
+  }
+
   @ExceptionHandler({UserNotFoundException.class, VehicleNotFoundException.class})
   public ProblemDetail handleNotFoundException(RuntimeException ex) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
