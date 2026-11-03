@@ -71,9 +71,7 @@ public class UserProfileController {
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = OK_STATUS, description = "Current user profile retrieved"),
-    @ApiResponse(
-        responseCode = UNAUTHORIZED_STATUS,
-        description = UNAUTHORIZED_MSG),
+    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
   })
   public ResponseEntity<UserResponse> getCurrentUserProfile(
@@ -250,7 +248,9 @@ public class UserProfileController {
       description = "Deletes user profile by public user ID",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = NO_CONTENT_STATUS, description = "User profile successfully deleted"),
+    @ApiResponse(
+        responseCode = NO_CONTENT_STATUS,
+        description = "User profile successfully deleted"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
   })
   public ResponseEntity<Void> deleteUserProfile(@PathVariable UUID userId) {
@@ -347,9 +347,7 @@ public class UserProfileController {
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = OK_STATUS, description = "List of vehicles"),
-    @ApiResponse(
-        responseCode = UNAUTHORIZED_STATUS,
-        description = UNAUTHORIZED_MSG),
+    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
         description = "Forbidden - Only clients can register vehicles"),
@@ -372,9 +370,7 @@ public class UserProfileController {
   @ApiResponses({
     @ApiResponse(responseCode = CREATED_STATUS, description = "Vehicle successfully added"),
     @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = INVALID_PLATE_MSG),
-    @ApiResponse(
-        responseCode = UNAUTHORIZED_STATUS,
-        description = UNAUTHORIZED_MSG),
+    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
         description = "Forbidden - Only clients can register vehicles"),
@@ -404,9 +400,7 @@ public class UserProfileController {
   @ApiResponses({
     @ApiResponse(responseCode = OK_STATUS, description = "Vehicle successfully updated"),
     @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = INVALID_PLATE_MSG),
-    @ApiResponse(
-        responseCode = UNAUTHORIZED_STATUS,
-        description = UNAUTHORIZED_MSG),
+    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
         description = "Forbidden - Only clients can modify vehicles"),
@@ -434,9 +428,7 @@ public class UserProfileController {
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = NO_CONTENT_STATUS, description = "Vehicle successfully removed"),
-    @ApiResponse(
-        responseCode = UNAUTHORIZED_STATUS,
-        description = UNAUTHORIZED_MSG),
+    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
         description = "Forbidden - Only clients can remove vehicles"),

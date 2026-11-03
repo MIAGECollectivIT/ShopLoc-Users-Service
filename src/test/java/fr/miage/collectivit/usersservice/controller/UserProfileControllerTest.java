@@ -433,9 +433,7 @@ class UserProfileControllerTest {
     when(userProfileService.getCurrentUserVehicles(userId.toString(), null)).thenReturn(vehicles);
 
     mockMvc
-        .perform(
-            get("/v1/users/me/vehicles")
-                .header("X-User-Id", userId.toString()))
+        .perform(get("/v1/users/me/vehicles").header("X-User-Id", userId.toString()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
@@ -447,9 +445,7 @@ class UserProfileControllerTest {
     when(userProfileService.getCurrentUserVehicles(userId.toString(), null)).thenReturn(vehicles);
 
     mockMvc
-        .perform(
-            get("/api/v1/users/me/vehicles")
-                .header("X-User-Id", userId.toString()))
+        .perform(get("/api/v1/users/me/vehicles").header("X-User-Id", userId.toString()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
   }
@@ -458,7 +454,8 @@ class UserProfileControllerTest {
   void shouldAddCurrentUserVehicle() throws Exception {
     VehicleRequest request = new VehicleRequest("BB-222-CC");
     VehicleResponse response = VehicleResponse.fromLicensePlate("BB-222-CC");
-    when(userProfileService.addCurrentUserVehicle(eq(userId.toString()), any(), any())).thenReturn(response);
+    when(userProfileService.addCurrentUserVehicle(eq(userId.toString()), any(), any()))
+        .thenReturn(response);
 
     mockMvc
         .perform(
@@ -475,7 +472,8 @@ class UserProfileControllerTest {
   void shouldUpdateCurrentUserVehicle() throws Exception {
     VehicleRequest request = new VehicleRequest("CC-333-DD");
     VehicleResponse response = VehicleResponse.fromLicensePlate("CC-333-DD");
-    when(userProfileService.updateCurrentUserVehicle(eq(userId.toString()), any(), eq("AA-123-AA"), any()))
+    when(userProfileService.updateCurrentUserVehicle(
+            eq(userId.toString()), any(), eq("AA-123-AA"), any()))
         .thenReturn(response);
 
     mockMvc
