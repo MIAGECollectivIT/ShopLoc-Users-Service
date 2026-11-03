@@ -14,6 +14,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -50,6 +51,12 @@ public class User {
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
 
+  @Column(name = "failed_login_attempts", nullable = false)
+  private int failedLoginAttempts;
+
+  @Column(name = "locked_until")
+  private Instant lockedUntil;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 20)
   @Builder.Default
@@ -83,6 +90,23 @@ public class User {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  public boolean isLocked() {
+    return lockedUntil != null && lockedUntil.isAfter(Instant.now());
+  }
+
+  @SuppressWarnings("PMD.NullAssignment")
+  public void resetLockout() {
+    this.failedLoginAttempts = 0;
+    this.lockedUntil = null;
+  }
+
+  public void incrementFailedAttempts(int maxAttempts, long lockoutMinutes) {
+    this.failedLoginAttempts++;
+    if (this.failedLoginAttempts >= maxAttempts) {
+      this.lockedUntil = Instant.now().plus(lockoutMinutes, ChronoUnit.MINUTES);
+    }
+  }
 
   @PrePersist
   protected void onCreate() {

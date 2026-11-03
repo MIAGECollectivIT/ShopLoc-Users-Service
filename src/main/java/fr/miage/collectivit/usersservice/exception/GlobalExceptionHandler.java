@@ -40,6 +40,13 @@ public class GlobalExceptionHandler {
     return problem;
   }
 
+  @ExceptionHandler(AccountLockedException.class)
+  public ProblemDetail handleAccountLockedException(AccountLockedException ex) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.LOCKED, ex.getMessage());
+    problem.setType(URI.create(PROBLEM_BASE_URL + "account-locked"));
+    return problem;
+  }
+
   @ExceptionHandler(ForbiddenException.class)
   public ProblemDetail handleForbiddenException(ForbiddenException ex) {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());

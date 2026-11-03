@@ -7,28 +7,32 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import fr.miage.collectivit.usersservice.dto.AuthResponse;
+import fr.miage.collectivit.usersservice.dto.LoginRequest;
 import fr.miage.collectivit.usersservice.dto.UserRegistrationRequest;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
+import fr.miage.collectivit.usersservice.exception.AccountLockedException;
 import fr.miage.collectivit.usersservice.exception.EmailAlreadyExistsException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
+import fr.miage.collectivit.usersservice.security.JwtTokenService;
 import fr.miage.collectivit.usersservice.service.impl.AuthenticationServiceImpl;
 import fr.miage.collectivit.usersservice.util.ClientCodeGenerator;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -45,12 +49,23 @@ class AuthenticationServiceTest {
 
   @Mock private TransactionTemplate transactionTemplate;
 
-  @InjectMocks private AuthenticationServiceImpl authenticationService;
+  @Mock private JwtTokenService jwtTokenService;
+
+  private AuthenticationServiceImpl authenticationService;
 
   private UserRegistrationRequest registrationRequest;
 
   @BeforeEach
   void setUp() {
+    authenticationService =
+        new AuthenticationServiceImpl(
+            userRepository,
+            passwordEncoder,
+            clientCodeGenerator,
+            transactionTemplate,
+            jwtTokenService,
+            5,
+            15L);
     registrationRequest =
         UserRegistrationRequest.builder()
             .firstName("Claire")
@@ -107,82 +122,51 @@ class AuthenticationServiceTest {
   }
 
   @Test
-  void shouldRegisterNewUserWithoutPickupLocationSuccessfully() {
-    UserRegistrationRequest noPickupRequest =
+  void shouldRejectRegistrationWhenPasswordContainsFirstName() {
+    UserRegistrationRequest req =
         UserRegistrationRequest.builder()
             .firstName("Claire")
             .lastName("Bernard")
             .birthDate(LocalDate.of(1993, 7, 24))
-            .email("claire.bernard@example.com")
-            .password("SecurePass99!")
-            .pickupLocation(null)
+            .email("claire@example.com")
+            .password("ClaireSecret123!")
             .build();
 
-    when(userRepository.existsByEmail("claire.bernard@example.com")).thenReturn(false);
-    when(clientCodeGenerator.generateCode()).thenReturn("cOdE123");
-    when(userRepository.existsByClientCode("cOdE123")).thenReturn(false);
-    when(passwordEncoder.encode("SecurePass99!")).thenReturn("$2a$12$hashedPassword");
-
-    UUID generatedId = UUID.randomUUID();
-    User savedEntity =
-        User.builder()
-            .id(1L)
-            .publicId(generatedId)
-            .firstName("Claire")
-            .lastName("Bernard")
-            .birthDate(LocalDate.of(1993, 7, 24))
-            .email("claire.bernard@example.com")
-            .passwordHash("$2a$12$hashedPassword")
-            .role(UserRole.CLIENT)
-            .clientCode("cOdE123")
-            .pickupLocation(null)
-            .licensePlates(List.of())
-            .build();
-
-    when(userRepository.saveAndFlush(any(User.class))).thenReturn(savedEntity);
-
-    UserResponse response = authenticationService.register(noPickupRequest);
-
-    assertThat(response.id()).isEqualTo(generatedId);
-    assertThat(response.pickupLocation()).isNull();
-    verify(userRepository).saveAndFlush(any(User.class));
+    assertThatThrownBy(() -> authenticationService.register(req))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("prénom");
   }
 
   @Test
-  void shouldRetryAndRegenerateNewClientCodeOnCollision() {
-    when(userRepository.existsByEmail("claire.bernard@example.com")).thenReturn(false);
-    when(clientCodeGenerator.generateCode()).thenReturn("cOdE111", "cOdE222");
-    when(userRepository.existsByClientCode("cOdE111")).thenReturn(false);
-    when(userRepository.existsByClientCode("cOdE222")).thenReturn(false);
-    when(passwordEncoder.encode("SecurePass99!")).thenReturn("$2a$12$hashedPassword");
-
-    UUID generatedId = UUID.randomUUID();
-    User savedEntity =
-        User.builder()
-            .id(1L)
-            .publicId(generatedId)
+  void shouldRejectRegistrationWhenPasswordContainsLastName() {
+    UserRegistrationRequest req =
+        UserRegistrationRequest.builder()
             .firstName("Claire")
             .lastName("Bernard")
             .birthDate(LocalDate.of(1993, 7, 24))
-            .email("claire.bernard@example.com")
-            .passwordHash("$2a$12$hashedPassword")
-            .role(UserRole.CLIENT)
-            .clientCode("cOdE222")
-            .pickupLocation("Mairie Centrale")
-            .licensePlates(List.of("AA-111-AA"))
+            .email("claire@example.com")
+            .password("SuperBernard123!")
             .build();
 
-    when(userRepository.saveAndFlush(any(User.class)))
-        .thenThrow(
-            new DataIntegrityViolationException("Unique constraint violation on client_code"))
-        .thenReturn(savedEntity);
+    assertThatThrownBy(() -> authenticationService.register(req))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("nom");
+  }
 
-    UserResponse response = authenticationService.register(registrationRequest);
+  @Test
+  void shouldRejectRegistrationWhenPasswordContainsEmailLocalPart() {
+    UserRegistrationRequest req =
+        UserRegistrationRequest.builder()
+            .firstName("Claire")
+            .lastName("Bernard")
+            .birthDate(LocalDate.of(1993, 7, 24))
+            .email("myuser123@example.com")
+            .password("myuser123Secret!")
+            .build();
 
-    assertThat(response.id()).isEqualTo(generatedId);
-    assertThat(response.clientCode()).isEqualTo("cOdE222");
-    verify(clientCodeGenerator, times(2)).generateCode();
-    verify(userRepository, times(2)).saveAndFlush(any(User.class));
+    assertThatThrownBy(() -> authenticationService.register(req))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("adresse email");
   }
 
   @Test
@@ -195,5 +179,72 @@ class AuthenticationServiceTest {
 
     verify(userRepository, never()).saveAndFlush(any(User.class));
     verify(passwordEncoder, never()).encode(anyString());
+  }
+
+  @Test
+  void shouldLockAccountAfterMaxFailedAttempts() {
+    User user =
+        User.builder()
+            .id(1L)
+            .email("claire.bernard@example.com")
+            .passwordHash("$2a$12$hashedPassword")
+            .failedLoginAttempts(4)
+            .build();
+
+    when(userRepository.findByEmail("claire.bernard@example.com")).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("WrongPassword123!", "$2a$12$hashedPassword")).thenReturn(false);
+
+    LoginRequest req = new LoginRequest("claire.bernard@example.com", "WrongPassword123!");
+
+    assertThatThrownBy(() -> authenticationService.login(req))
+        .isInstanceOf(AccountLockedException.class)
+        .hasMessageContaining("bloqué");
+
+    assertThat(user.isLocked()).isTrue();
+    verify(userRepository).save(user);
+  }
+
+  @Test
+  void shouldRejectLoginWhenAccountIsAlreadyLocked() {
+    User user =
+        User.builder()
+            .id(1L)
+            .email("claire.bernard@example.com")
+            .passwordHash("$2a$12$hashedPassword")
+            .lockedUntil(Instant.now().plus(10, ChronoUnit.MINUTES))
+            .build();
+
+    when(userRepository.findByEmail("claire.bernard@example.com")).thenReturn(Optional.of(user));
+
+    LoginRequest req = new LoginRequest("claire.bernard@example.com", "AnyPassword123!");
+
+    assertThatThrownBy(() -> authenticationService.login(req))
+        .isInstanceOf(AccountLockedException.class)
+        .hasMessageContaining("bloqué");
+
+    verify(passwordEncoder, never()).matches(anyString(), anyString());
+  }
+
+  @Test
+  void shouldResetLockoutOnSuccessfulLogin() {
+    User user =
+        User.builder()
+            .id(1L)
+            .email("claire.bernard@example.com")
+            .passwordHash("$2a$12$hashedPassword")
+            .failedLoginAttempts(2)
+            .build();
+
+    when(userRepository.findByEmail("claire.bernard@example.com")).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("GoodPassword123!", "$2a$12$hashedPassword")).thenReturn(true);
+    when(jwtTokenService.generateToken(user)).thenReturn("jwt-token");
+    when(jwtTokenService.getExpirationSeconds()).thenReturn(7200L);
+
+    LoginRequest req = new LoginRequest("claire.bernard@example.com", "GoodPassword123!");
+    AuthResponse authResponse = authenticationService.login(req);
+
+    assertThat(authResponse.token()).isEqualTo("jwt-token");
+    assertThat(user.getFailedLoginAttempts()).isEqualTo(0);
+    verify(userRepository).save(user);
   }
 }

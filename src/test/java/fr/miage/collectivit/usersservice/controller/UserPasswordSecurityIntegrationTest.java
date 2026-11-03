@@ -93,7 +93,7 @@ class UserPasswordSecurityIntegrationTest {
             .lastName("User")
             .birthDate(LocalDate.of(1990, 1, 1))
             .email("case.unique@example.com")
-            .password("ValidP@ss1!")
+            .password("ValidP@ssword1!")
             .pickupLocation("Mairie Centrale")
             .build();
 
@@ -110,7 +110,7 @@ class UserPasswordSecurityIntegrationTest {
             .lastName("User")
             .birthDate(LocalDate.of(1991, 2, 2))
             .email("CASE.UNIQUE@EXAMPLE.COM")
-            .password("ValidP@ss2!")
+            .password("ValidP@ssword2!")
             .pickupLocation("Commerce Partenaire A")
             .build();
 
@@ -128,7 +128,8 @@ class UserPasswordSecurityIntegrationTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
-        "short1!", // less than 8 chars
+        "short1!", // less than 12 chars
+        "Under12Ch@1", // 11 chars (fails min 12)
         "alllowercase1!", // missing uppercase
         "ALLUPPERCASE1!", // missing lowercase
         "NoDigitsHere!", // missing digit
