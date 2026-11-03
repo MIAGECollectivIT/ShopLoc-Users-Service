@@ -159,8 +159,8 @@ public class JwtTokenService {
   }
 
   public Claims validateAndExtractClaims(String token) {
+    Claims claims;
     try {
-      Claims claims;
       if (asymmetric && rsaPublicKey != null) {
         claims =
             Jwts.parser().verifyWith(rsaPublicKey).build().parseSignedClaims(token).getPayload();
@@ -168,18 +168,18 @@ public class JwtTokenService {
         claims =
             Jwts.parser().verifyWith(hmacSecretKey).build().parseSignedClaims(token).getPayload();
       }
-
-      if (tokenRevocationService != null
-          && claims.getId() != null
-          && tokenRevocationService.isRevoked(claims.getId())) {
-        throw new UnauthorizedException("Jeton révoqué suite à une déconnexion.");
-      }
-
-      return claims;
     } catch (JwtException | IllegalArgumentException ex) {
       throw new UnauthorizedException(
           "Jeton d'authentification invalide ou expiré : " + ex.getMessage(), ex);
     }
+
+    if (tokenRevocationService != null
+        && claims.getId() != null
+        && tokenRevocationService.isRevoked(claims.getId())) {
+      throw new UnauthorizedException("Jeton révoqué suite à une déconnexion.");
+    }
+
+    return claims;
   }
 
   public long getExpirationSeconds() {

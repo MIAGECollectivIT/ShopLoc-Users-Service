@@ -51,6 +51,13 @@ application:
       x-service-environment: "${ENVIRONMENT:development}"
       x-service-name: "users-service"
   security:
+    # ==============================================================================
+    # SECURITY / WARNING: DO NOT MODIFY THIS VALUE!
+    # Public user registration is intentionally disabled to protect the platform
+    # against brute-force attacks and bots.
+    # All authorized users must be provisioned via SQL migrations.
+    # ==============================================================================
+    registration-enabled: ${REGISTRATION_ENABLED:false}
     auth-type: "Bearer JWT"
     jwt:
       header-name: "Authorization"
