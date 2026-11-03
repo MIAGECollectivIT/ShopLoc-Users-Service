@@ -28,10 +28,10 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
-    operationsSorter: method
-    tagsSorter: alpha
-    tryItOutEnabled: true
-    persistAuthorization: true
+  operationsSorter: method
+  tagsSorter: alpha
+  tryItOutEnabled: true
+  persistAuthorization: true
 
 # Application configuration including OpenAPI extensions and Authentication
 application:
@@ -67,4 +67,7 @@ application:
       key-id: "${JWT_KEY_ID:shoploc-key-1}"
       issuer: "shoploc-auth-service"
       expiration-ms: 7200000
+    lockout:
+      max-attempts: ${SECURITY_MAX_LOGIN_ATTEMPTS:5}
+      lockout-minutes: ${SECURITY_LOCKOUT_MINUTES:15}
     description: "Authenticate using a JWT Bearer token. Enter your token prefixed with 'Bearer ' or simply the token value."

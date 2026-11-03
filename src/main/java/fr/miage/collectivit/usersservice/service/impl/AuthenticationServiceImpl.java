@@ -8,6 +8,7 @@ import fr.miage.collectivit.usersservice.dto.UserRegistrationRequest;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
+import fr.miage.collectivit.usersservice.exception.AccountLockedException;
 import fr.miage.collectivit.usersservice.exception.EmailAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
@@ -18,14 +19,14 @@ import fr.miage.collectivit.usersservice.validation.FrenchLicensePlateValidator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-@RequiredArgsConstructor
+@SuppressWarnings("PMD.TooManyMethods")
 public class AuthenticationServiceImpl implements AuthenticationService {
 
   private static final int MAX_REGISTRATION_RETRIES = 5;
@@ -35,11 +36,32 @@ public class AuthenticationServiceImpl implements AuthenticationService {
   private final ClientCodeGenerator clientCodeGenerator;
   private final TransactionTemplate transactionTemplate;
   private final JwtTokenService jwtTokenService;
+  private final int maxFailedAttempts;
+  private final long lockoutMinutes;
+
+  public AuthenticationServiceImpl(
+      UserRepository userRepository,
+      PasswordEncoder passwordEncoder,
+      ClientCodeGenerator clientCodeGenerator,
+      TransactionTemplate transactionTemplate,
+      JwtTokenService jwtTokenService,
+      @Value("${application.security.lockout.max-attempts:5}") int maxFailedAttempts,
+      @Value("${application.security.lockout.lockout-minutes:15}") long lockoutMinutes) {
+    this.userRepository = userRepository;
+    this.passwordEncoder = passwordEncoder;
+    this.clientCodeGenerator = clientCodeGenerator;
+    this.transactionTemplate = transactionTemplate;
+    this.jwtTokenService = jwtTokenService;
+    this.maxFailedAttempts = maxFailedAttempts;
+    this.lockoutMinutes = lockoutMinutes;
+  }
 
   @Override
   public UserResponse register(UserRegistrationRequest request) {
     String normalizedEmail = request.email().trim().toLowerCase(ROOT);
     checkEmailAvailability(normalizedEmail);
+    validatePasswordPersonalContext(
+        request.password(), request.firstName(), request.lastName(), normalizedEmail);
 
     String hashedPassword = passwordEncoder.encode(request.password());
     List<String> normalizedPlates = extractNormalizedPlates(request.licensePlates());
@@ -60,9 +82,31 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     new UnauthorizedException(
                         "Identifiants invalides (adresse email ou mot de passe incorrect)"));
 
+    if (user.isLocked()) {
+      throw new AccountLockedException(
+          "Compte temporairement bloqué suite à un nombre trop élevé d'échecs d'authentification. Veuillez réessayer plus tard.");
+    }
+
     if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+      user.incrementFailedAttempts(maxFailedAttempts, lockoutMinutes);
+      userRepository.save(user);
+
+      if (user.isLocked()) {
+        throw new AccountLockedException(
+            "Compte temporairement bloqué suite à un nombre trop élevé d'échecs consécutifs ("
+                + maxFailedAttempts
+                + " tentatives). Veuillez réessayer dans "
+                + lockoutMinutes
+                + " minutes.");
+      }
+
       throw new UnauthorizedException(
           "Identifiants invalides (adresse email ou mot de passe incorrect)");
+    }
+
+    if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
+      user.resetLockout();
+      userRepository.save(user);
     }
 
     String token = jwtTokenService.generateToken(user);
@@ -72,6 +116,36 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         .expiresIn(jwtTokenService.getExpirationSeconds())
         .user(UserResponse.fromEntity(user))
         .build();
+  }
+
+  private void validatePasswordPersonalContext(
+      String password, String firstName, String lastName, String email) {
+    if (password == null) {
+      return;
+    }
+    String lowerPassword = password.toLowerCase(ROOT);
+    checkName(lowerPassword, firstName, "prénom");
+    checkName(lowerPassword, lastName, "nom");
+    checkEmailLocalPart(lowerPassword, email);
+  }
+
+  private void checkName(String lowerPassword, String name, String fieldLabel) {
+    if (name != null
+        && name.trim().length() >= 3
+        && lowerPassword.contains(name.trim().toLowerCase(ROOT))) {
+      throw new IllegalArgumentException(
+          "Le mot de passe ne doit pas contenir votre " + fieldLabel + " (recommandation CNIL).");
+    }
+  }
+
+  private void checkEmailLocalPart(String lowerPassword, String email) {
+    if (email != null && email.contains("@")) {
+      String localPart = email.substring(0, email.indexOf('@')).trim().toLowerCase(ROOT);
+      if (localPart.length() >= 3 && lowerPassword.contains(localPart)) {
+        throw new IllegalArgumentException(
+            "Le mot de passe ne doit pas contenir votre adresse email (recommandation CNIL).");
+      }
+    }
   }
 
   private void checkEmailAvailability(String email) {

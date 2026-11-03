@@ -137,6 +137,57 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
+  @DisplayName("POST /v1/users/login verrouille le compte après 5 tentatives échouées (HTTP 423)")
+  void shouldLockAccountAfterFiveConsecutiveFailedAttempts() throws Exception {
+    User user =
+        User.builder()
+            .firstName("Alice")
+            .lastName("Lockout")
+            .birthDate(LocalDate.of(1990, 5, 20))
+            .email("alice.lockout@example.com")
+            .passwordHash(passwordEncoder.encode("GoodPassword1!"))
+            .role(UserRole.CLIENT)
+            .clientCode("CL99999")
+            .build();
+    userRepository.saveAndFlush(user);
+
+    LoginRequest badRequest =
+        LoginRequest.builder()
+            .email("alice.lockout@example.com")
+            .password("WrongPassword1!")
+            .build();
+
+    for (int i = 0; i < 4; i++) {
+      mockMvc
+          .perform(
+              post("/v1/users/login")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(badRequest)))
+          .andExpect(status().isUnauthorized());
+    }
+
+    mockMvc
+        .perform(
+            post("/v1/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(badRequest)))
+        .andExpect(status().isLocked())
+        .andExpect(jsonPath("$.type").value("https://errors.shoploc.com/account-locked"));
+
+    LoginRequest goodRequest =
+        LoginRequest.builder()
+            .email("alice.lockout@example.com")
+            .password("GoodPassword1!")
+            .build();
+    mockMvc
+        .perform(
+            post("/v1/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(goodRequest)))
+        .andExpect(status().isLocked());
+  }
+
+  @Test
   @DisplayName("GET /v1/users/me sans token renvoie 401 Unauthorized")
   void shouldDenyMeEndpointWhenTokenMissing() throws Exception {
     mockMvc.perform(get("/v1/users/me")).andExpect(status().isUnauthorized());
