@@ -18,7 +18,7 @@ INSERT INTO users (
 (
     gen_random_uuid(),
     'marius.vasseur@shop-loc.fr',
-    '$2a$12$D51DIpyuiyVRAwwksViBn.p00Kwja/P8C8pQEX0otOfLW04jP1.km',
+    '$2a$12$2ebARMeajpwYW14E4IDUhOjGVTl3u9bFtZy76.iqK.UZoOZp1YWwm',
     'ADMIN',
     'Marius',
     'Vasseur',
@@ -33,7 +33,7 @@ INSERT INTO users (
 (
     gen_random_uuid(),
     'suzanne.morel@shop-loc.fr',
-    '$2a$12$SHi/ItBrg3WAk06fcfSn2u/UTDdiz7orRkXNILCY8SYLVcRLX2626',
+    '$2a$12$WIp8VuYIjAUgtbFinTv8y.0PFkl2sFUapw5ta29D.A4BibO2CFOmW',
     'MERCHANT',
     'Suzanne',
     'Morel',
@@ -48,7 +48,7 @@ INSERT INTO users (
 (
     gen_random_uuid(),
     'pierre.dufour@shop-loc.fr',
-    '$2a$12$zFGvSqdghAUf7JY68HIUjO1rmLIUvm/5LGtQLNFkIDtPH3RScubGu',
+    '$2a$12$Ix1Bh3bVR3rUTj.K8qQS4uhrxMQi0mXTgBNESY3mHzECbelDZBh2a',
     'CLIENT',
     'Pierre',
     'Dufour',
