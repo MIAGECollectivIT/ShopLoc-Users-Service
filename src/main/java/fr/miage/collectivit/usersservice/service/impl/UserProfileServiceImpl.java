@@ -145,7 +145,9 @@ public class UserProfileServiceImpl implements UserProfileService {
     user.setLastName(request.lastName().trim());
     user.setBirthDate(request.birthDate());
     user.setPickupLocation(
-        request.pickupLocation() != null ? request.pickupLocation().trim() : null);
+        (request.pickupLocation() != null && !request.pickupLocation().isBlank())
+            ? request.pickupLocation().trim()
+            : null);
 
     User savedUser = userRepository.save(user);
     return UserResponse.fromEntity(savedUser);

@@ -192,7 +192,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
   private User buildUserEntity(
       UserRegistrationRequest request, String email, String hashedPassword, List<String> plates) {
-    String pickupLoc = request.pickupLocation() != null ? request.pickupLocation().trim() : null;
+    String pickupLoc =
+        (request.pickupLocation() != null && !request.pickupLocation().isBlank())
+            ? request.pickupLocation().trim()
+            : null;
     return User.builder()
         .firstName(request.firstName().trim())
         .lastName(request.lastName().trim())

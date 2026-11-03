@@ -122,6 +122,88 @@ class AuthenticationServiceTest {
   }
 
   @Test
+  void shouldRegisterNewUserWithoutPickupLocationSuccessfully() {
+    UUID generatedId = UUID.randomUUID();
+    UserRegistrationRequest requestWithoutLocation =
+        UserRegistrationRequest.builder()
+            .firstName("Claire")
+            .lastName("Bernard")
+            .birthDate(LocalDate.of(1993, 7, 24))
+            .email("claire.demat@example.com")
+            .password("SecurePass99!")
+            .pickupLocation(null)
+            .build();
+
+    when(userRepository.existsByEmail("claire.demat@example.com")).thenReturn(false);
+    when(passwordEncoder.encode(anyString())).thenReturn("$2a$12$hashedPassword");
+    when(clientCodeGenerator.generateCode()).thenReturn("cOdE123");
+    when(userRepository.existsByClientCode("cOdE123")).thenReturn(false);
+
+    User savedEntity =
+        User.builder()
+            .id(1L)
+            .publicId(generatedId)
+            .firstName("Claire")
+            .lastName("Bernard")
+            .birthDate(LocalDate.of(1993, 7, 24))
+            .email("claire.demat@example.com")
+            .passwordHash("$2a$12$hashedPassword")
+            .role(UserRole.CLIENT)
+            .clientCode("cOdE123")
+            .pickupLocation(null)
+            .licensePlates(List.of())
+            .build();
+
+    when(userRepository.saveAndFlush(any(User.class))).thenReturn(savedEntity);
+
+    UserResponse response = authenticationService.register(requestWithoutLocation);
+
+    assertThat(response.id()).isEqualTo(generatedId);
+    assertThat(response.pickupLocation()).isNull();
+  }
+
+  @Test
+  void shouldNormalizeBlankPickupLocationToNullOnRegistration() {
+    UUID generatedId = UUID.randomUUID();
+    UserRegistrationRequest requestWithBlankLocation =
+        UserRegistrationRequest.builder()
+            .firstName("Claire")
+            .lastName("Bernard")
+            .birthDate(LocalDate.of(1993, 7, 24))
+            .email("claire.blank@example.com")
+            .password("SecurePass99!")
+            .pickupLocation("   ")
+            .build();
+
+    when(userRepository.existsByEmail("claire.blank@example.com")).thenReturn(false);
+    when(passwordEncoder.encode(anyString())).thenReturn("$2a$12$hashedPassword");
+    when(clientCodeGenerator.generateCode()).thenReturn("cOdE123");
+    when(userRepository.existsByClientCode("cOdE123")).thenReturn(false);
+
+    User savedEntity =
+        User.builder()
+            .id(1L)
+            .publicId(generatedId)
+            .firstName("Claire")
+            .lastName("Bernard")
+            .birthDate(LocalDate.of(1993, 7, 24))
+            .email("claire.blank@example.com")
+            .passwordHash("$2a$12$hashedPassword")
+            .role(UserRole.CLIENT)
+            .clientCode("cOdE123")
+            .pickupLocation(null)
+            .licensePlates(List.of())
+            .build();
+
+    when(userRepository.saveAndFlush(any(User.class))).thenReturn(savedEntity);
+
+    UserResponse response = authenticationService.register(requestWithBlankLocation);
+
+    assertThat(response.id()).isEqualTo(generatedId);
+    assertThat(response.pickupLocation()).isNull();
+  }
+
+  @Test
   void shouldRejectRegistrationWhenPasswordContainsFirstName() {
     UserRegistrationRequest req =
         UserRegistrationRequest.builder()
