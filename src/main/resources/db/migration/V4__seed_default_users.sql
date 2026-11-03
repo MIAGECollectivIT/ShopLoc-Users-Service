@@ -24,7 +24,7 @@ INSERT INTO users (
     'Vasseur',
     '1982-05-14',
     'AD82001',
-    'Mairie Centrale',
+    NULL,
     '{}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
