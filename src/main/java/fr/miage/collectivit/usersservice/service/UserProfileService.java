@@ -27,5 +27,17 @@ public interface UserProfileService {
 
   VehicleResponse addVehicle(UUID userId, VehicleRequest request);
 
+  VehicleResponse updateVehicle(UUID userId, String vehicleId, VehicleRequest request);
+
   void removeVehicle(UUID userId, String vehicleId);
+
+  List<VehicleResponse> getCurrentUserVehicles(String userIdHeader, String userEmailHeader);
+
+  VehicleResponse addCurrentUserVehicle(
+      String userIdHeader, String userEmailHeader, VehicleRequest request);
+
+  VehicleResponse updateCurrentUserVehicle(
+      String userIdHeader, String userEmailHeader, String vehicleId, VehicleRequest request);
+
+  void removeCurrentUserVehicle(String userIdHeader, String userEmailHeader, String vehicleId);
 }

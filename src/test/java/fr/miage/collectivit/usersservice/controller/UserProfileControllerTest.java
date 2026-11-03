@@ -396,4 +396,108 @@ class UserProfileControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isForbidden());
   }
+
+  @Test
+  void shouldUpdateVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("DD-111-EE");
+    VehicleResponse response = VehicleResponse.fromLicensePlate("DD-111-EE");
+    when(userProfileService.updateVehicle(eq(userId), eq("AA-123-AA"), any())).thenReturn(response);
+
+    mockMvc
+        .perform(
+            put("/v1/users/{userId}/vehicles/{vehicleId}", userId, "AA-123-AA")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.licensePlate").value("DD-111-EE"));
+  }
+
+  @Test
+  void shouldDenyUpdateVehicleForDifferentUser() throws Exception {
+    UUID otherUserId = UUID.randomUUID();
+    VehicleRequest request = new VehicleRequest("DD-111-EE");
+
+    mockMvc
+        .perform(
+            put("/v1/users/{userId}/vehicles/{vehicleId}", userId, "AA-123-AA")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, otherUserId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldGetCurrentUserVehicles() throws Exception {
+    List<VehicleResponse> vehicles = List.of(VehicleResponse.fromLicensePlate("AA-123-AA"));
+    when(userProfileService.getCurrentUserVehicles(userId.toString(), null)).thenReturn(vehicles);
+
+    mockMvc
+        .perform(
+            get("/v1/users/me/vehicles")
+                .header("X-User-Id", userId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
+  }
+
+  @Test
+  void shouldGetCurrentUserVehiclesOnApiV1Endpoint() throws Exception {
+    List<VehicleResponse> vehicles = List.of(VehicleResponse.fromLicensePlate("AA-123-AA"));
+    when(userProfileService.getCurrentUserVehicles(userId.toString(), null)).thenReturn(vehicles);
+
+    mockMvc
+        .perform(
+            get("/api/v1/users/me/vehicles")
+                .header("X-User-Id", userId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
+  }
+
+  @Test
+  void shouldAddCurrentUserVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("BB-222-CC");
+    VehicleResponse response = VehicleResponse.fromLicensePlate("BB-222-CC");
+    when(userProfileService.addCurrentUserVehicle(eq(userId.toString()), any(), any())).thenReturn(response);
+
+    mockMvc
+        .perform(
+            post("/v1/users/me/vehicles")
+                .header("X-User-Id", userId.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(header().string("Location", "/v1/users/me/vehicles/BB-222-CC"))
+        .andExpect(jsonPath("$.licensePlate").value("BB-222-CC"));
+  }
+
+  @Test
+  void shouldUpdateCurrentUserVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("CC-333-DD");
+    VehicleResponse response = VehicleResponse.fromLicensePlate("CC-333-DD");
+    when(userProfileService.updateCurrentUserVehicle(eq(userId.toString()), any(), eq("AA-123-AA"), any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            put("/v1/users/me/vehicles/{vehicleId}", "AA-123-AA")
+                .header("X-User-Id", userId.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.licensePlate").value("CC-333-DD"));
+  }
+
+  @Test
+  void shouldRemoveCurrentUserVehicle() throws Exception {
+    doNothing()
+        .when(userProfileService)
+        .removeCurrentUserVehicle(userId.toString(), null, "AA-123-AA");
+
+    mockMvc
+        .perform(
+            delete("/v1/users/me/vehicles/{vehicleId}", "AA-123-AA")
+                .header("X-User-Id", userId.toString()))
+        .andExpect(status().isNoContent());
+  }
 }

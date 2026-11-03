@@ -324,8 +324,7 @@ class UserProfileServiceTest {
   void shouldThrowConflictWhenAddingExistingVehicle() {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
 
-    assertThatThrownBy(
-            () -> userProfileService.addVehicle(userId, new VehicleRequest("xx-123-yy")))
+    assertThatThrownBy(() -> userProfileService.addVehicle(userId, new VehicleRequest("xx-123-yy")))
         .isInstanceOf(VehicleAlreadyExistsException.class)
         .hasMessageContaining("XX-123-YY");
   }
@@ -358,5 +357,88 @@ class UserProfileServiceTest {
 
     assertThatThrownBy(() -> userProfileService.removeVehicle(userId, "ZZ-999-ZZ"))
         .isInstanceOf(VehicleNotFoundException.class);
+  }
+
+  @Test
+  void shouldUpdateVehicleForClient() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    VehicleResponse response =
+        userProfileService.updateVehicle(userId, "xx-123-yy", new VehicleRequest("zz-789-ww"));
+
+    assertThat(response.licensePlate()).isEqualTo("ZZ-789-WW");
+    assertThat(existingUser.getLicensePlates()).containsExactly("ZZ-789-WW");
+    verify(userRepository).save(existingUser);
+  }
+
+  @Test
+  void shouldThrowNotFoundWhenUpdatingNonExistentVehicle() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+
+    assertThatThrownBy(
+            () ->
+                userProfileService.updateVehicle(
+                    userId, "unknown-plate", new VehicleRequest("zz-789-ww")))
+        .isInstanceOf(VehicleNotFoundException.class);
+  }
+
+  @Test
+  void shouldThrowConflictWhenUpdatingToExistingVehicle() {
+    existingUser.getLicensePlates().add("BB-222-BB");
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+
+    assertThatThrownBy(
+            () ->
+                userProfileService.updateVehicle(
+                    userId, "XX-123-YY", new VehicleRequest("bb-222-bb")))
+        .isInstanceOf(VehicleAlreadyExistsException.class);
+  }
+
+  @Test
+  void shouldGetCurrentUserVehicles() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+
+    List<VehicleResponse> vehicles =
+        userProfileService.getCurrentUserVehicles(userId.toString(), null);
+
+    assertThat(vehicles).hasSize(1);
+    assertThat(vehicles.get(0).licensePlate()).isEqualTo("XX-123-YY");
+  }
+
+  @Test
+  void shouldAddCurrentUserVehicle() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    VehicleResponse response =
+        userProfileService.addCurrentUserVehicle(
+            userId.toString(), null, new VehicleRequest("DD-444-EE"));
+
+    assertThat(response.licensePlate()).isEqualTo("DD-444-EE");
+    assertThat(existingUser.getLicensePlates()).contains("DD-444-EE");
+  }
+
+  @Test
+  void shouldUpdateCurrentUserVehicle() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    VehicleResponse response =
+        userProfileService.updateCurrentUserVehicle(
+            userId.toString(), null, "XX-123-YY", new VehicleRequest("EE-555-FF"));
+
+    assertThat(response.licensePlate()).isEqualTo("EE-555-FF");
+    assertThat(existingUser.getLicensePlates()).containsExactly("EE-555-FF");
+  }
+
+  @Test
+  void shouldRemoveCurrentUserVehicle() {
+    when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    userProfileService.removeCurrentUserVehicle(userId.toString(), null, "XX-123-YY");
+
+    assertThat(existingUser.getLicensePlates()).isEmpty();
   }
 }

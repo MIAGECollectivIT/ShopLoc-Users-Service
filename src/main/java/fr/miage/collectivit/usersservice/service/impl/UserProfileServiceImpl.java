@@ -164,13 +164,24 @@ public class UserProfileServiceImpl implements UserProfileService {
     userRepository.delete(user);
   }
 
+  private Client getClientOrThrow(UUID userId) {
+    User user = findUserByPublicId(userId);
+    if (user instanceof Client client) {
+      return client;
+    }
+    throw new ForbiddenException("Seuls les clients peuvent gérer les véhicules.");
+  }
+
+  private void validateNewPlateNotDuplicate(List<String> plates, String oldPlate, String newPlate) {
+    if (!newPlate.equalsIgnoreCase(oldPlate) && hasPlate(plates, newPlate)) {
+      throw new VehicleAlreadyExistsException(newPlate);
+    }
+  }
+
   @Override
   @Transactional(readOnly = true)
   public List<VehicleResponse> getVehicles(UUID userId) {
-    User user = findUserByPublicId(userId);
-    if (!(user instanceof Client client)) {
-      throw new ForbiddenException("Seuls les clients peuvent posséder des véhicules.");
-    }
+    Client client = getClientOrThrow(userId);
     if (client.getLicensePlates() == null) {
       return List.of();
     }
@@ -180,19 +191,14 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Override
   @Transactional
   public VehicleResponse addVehicle(UUID userId, VehicleRequest request) {
-    User user = findUserByPublicId(userId);
-    if (!(user instanceof Client client)) {
-      throw new ForbiddenException("Seuls les clients peuvent enregistrer un véhicule.");
-    }
+    Client client = getClientOrThrow(userId);
     String plate = FrenchLicensePlateValidator.normalize(request.licensePlate());
 
     if (client.getLicensePlates() == null) {
       client.setLicensePlates(new ArrayList<>());
     }
 
-    boolean alreadyExists =
-        client.getLicensePlates().stream().anyMatch(existing -> existing.equalsIgnoreCase(plate));
-    if (alreadyExists) {
+    if (hasPlate(client.getLicensePlates(), plate)) {
       throw new VehicleAlreadyExistsException(plate);
     }
 
@@ -204,10 +210,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Override
   @Transactional
   public void removeVehicle(UUID userId, String vehicleId) {
-    User user = findUserByPublicId(userId);
-    if (!(user instanceof Client client)) {
-      throw new ForbiddenException("Seuls les clients peuvent gérer les véhicules.");
-    }
+    Client client = getClientOrThrow(userId);
     if (client.getLicensePlates() == null || client.getLicensePlates().isEmpty()) {
       throw new VehicleNotFoundException(vehicleId);
     }
@@ -220,6 +223,72 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     userRepository.save(client);
+  }
+
+  @Override
+  @Transactional
+  public VehicleResponse updateVehicle(UUID userId, String vehicleId, VehicleRequest request) {
+    Client client = getClientOrThrow(userId);
+    if (client.getLicensePlates() == null || client.getLicensePlates().isEmpty()) {
+      throw new VehicleNotFoundException(vehicleId);
+    }
+
+    String oldPlate = FrenchLicensePlateValidator.normalize(vehicleId);
+    int targetIndex = findPlateIndex(client.getLicensePlates(), oldPlate);
+    if (targetIndex == -1) {
+      throw new VehicleNotFoundException(vehicleId);
+    }
+
+    String newPlate = FrenchLicensePlateValidator.normalize(request.licensePlate());
+    validateNewPlateNotDuplicate(client.getLicensePlates(), oldPlate, newPlate);
+
+    client.getLicensePlates().set(targetIndex, newPlate);
+    userRepository.save(client);
+    return VehicleResponse.fromLicensePlate(newPlate);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<VehicleResponse> getCurrentUserVehicles(String userIdHeader, String userEmailHeader) {
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    return getVehicles(user.getPublicId());
+  }
+
+  @Override
+  @Transactional
+  public VehicleResponse addCurrentUserVehicle(
+      String userIdHeader, String userEmailHeader, VehicleRequest request) {
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    return addVehicle(user.getPublicId(), request);
+  }
+
+  @Override
+  @Transactional
+  public VehicleResponse updateCurrentUserVehicle(
+      String userIdHeader, String userEmailHeader, String vehicleId, VehicleRequest request) {
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    return updateVehicle(user.getPublicId(), vehicleId, request);
+  }
+
+  @Override
+  @Transactional
+  public void removeCurrentUserVehicle(
+      String userIdHeader, String userEmailHeader, String vehicleId) {
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    removeVehicle(user.getPublicId(), vehicleId);
+  }
+
+  private int findPlateIndex(List<String> plates, String targetPlate) {
+    for (int i = 0; i < plates.size(); i++) {
+      if (plates.get(i).equalsIgnoreCase(targetPlate)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  private boolean hasPlate(List<String> plates, String targetPlate) {
+    return plates.stream().anyMatch(p -> p.equalsIgnoreCase(targetPlate));
   }
 
   private User findUserByPublicId(UUID userId) {
