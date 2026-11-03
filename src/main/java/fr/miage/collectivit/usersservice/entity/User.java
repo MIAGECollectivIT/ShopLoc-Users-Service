@@ -3,19 +3,23 @@ package fr.miage.collectivit.usersservice.entity;
 import static fr.miage.collectivit.usersservice.entity.UserRole.CLIENT;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -24,16 +28,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "users")
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = "role", discriminatorType = DiscriminatorType.STRING, length = 20)
+@DiscriminatorValue("USER")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 @ToString
 public class User {
 
@@ -58,7 +64,7 @@ public class User {
   private Instant lockedUntil;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "role", nullable = false, length = 20)
+  @Column(name = "role", nullable = false, length = 20, insertable = false, updatable = false)
   @Builder.Default
   private UserRole role = CLIENT;
 
@@ -71,25 +77,31 @@ public class User {
   @Column(name = "birth_date", nullable = false)
   private LocalDate birthDate;
 
-  @Column(name = "client_code", nullable = false, unique = true, length = 7)
-  private String clientCode;
-
-  // Physical card pickup location is optional as the customer can choose not to request a physical
-  // card
-  @Column(name = "pickup_location", length = 150)
-  private String pickupLocation;
-
-  // Uses SQL ARRAY mapping supported natively in PostgreSQL and modern dialects
-  @JdbcTypeCode(SqlTypes.ARRAY)
-  @Column(name = "license_plates")
-  @Builder.Default
-  private List<String> licensePlates = new ArrayList<>();
-
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  public UserRole getRole() {
+    return role != null ? role : CLIENT;
+  }
+
+  public String getClientCode() {
+    return null;
+  }
+
+  public String getPickupLocation() {
+    return null;
+  }
+
+  public void setPickupLocation(String pickupLocation) {
+    // Base implementation is a no-op; overridden in Client
+  }
+
+  public List<String> getLicensePlates() {
+    return List.of();
+  }
 
   public boolean isLocked() {
     return lockedUntil != null && lockedUntil.isAfter(Instant.now());

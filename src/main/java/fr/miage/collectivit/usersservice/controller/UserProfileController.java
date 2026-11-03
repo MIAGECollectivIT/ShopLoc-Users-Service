@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/v1/users")
+@RequestMapping({"/v1/users", "/api/v1/users"})
 @RequiredArgsConstructor
 @Tag(
     name = "User Profile",
@@ -220,7 +220,7 @@ public class UserProfileController {
   public ResponseEntity<VehicleResponse> addVehicle(
       @PathVariable UUID userId, @Valid @RequestBody VehicleRequest request) {
     VehicleResponse response = userProfileService.addVehicle(userId, request);
-    URI location = URI.create("/v1/users/" + userId + "/vehicles/" + response.vehicleId());
+    URI location = URI.create("/v1/users/" + userId + "/vehicles/" + response.licensePlate());
     return ResponseEntity.created(location).body(response);
   }
 

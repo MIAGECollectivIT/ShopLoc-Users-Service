@@ -87,6 +87,97 @@ class UserProfileControllerTest {
   }
 
   @Test
+  void shouldGetCurrentUserProfileOnApiV1EndpointForClient() throws Exception {
+    UserResponse response =
+        UserResponse.builder()
+            .id(userId)
+            .email("client@test.com")
+            .role(UserRole.CLIENT)
+            .firstName("Sophie")
+            .lastName("Martin")
+            .birthDate(LocalDate.of(1988, 4, 12))
+            .clientCode("CL12345")
+            .pickupLocation("Mairie")
+            .licensePlates(List.of("AA-123-AA", "BB-456-BB"))
+            .build();
+
+    when(userProfileService.getCurrentUserProfile(userId.toString(), null)).thenReturn(response);
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header("X-User-Id", userId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(userId.toString()))
+        .andExpect(jsonPath("$.email").value("client@test.com"))
+        .andExpect(jsonPath("$.role").value("CLIENT"))
+        .andExpect(jsonPath("$.firstName").value("Sophie"))
+        .andExpect(jsonPath("$.lastName").value("Martin"))
+        .andExpect(jsonPath("$.clientCode").value("CL12345"))
+        .andExpect(jsonPath("$.pickupLocation").value("Mairie"))
+        .andExpect(jsonPath("$.licensePlates[0]").value("AA-123-AA"))
+        .andExpect(jsonPath("$.licensePlates[1]").value("BB-456-BB"));
+  }
+
+  @Test
+  void shouldGetCurrentUserProfileOnApiV1EndpointForMerchant() throws Exception {
+    UUID merchantId = UUID.randomUUID();
+    UserResponse response =
+        UserResponse.builder()
+            .id(merchantId)
+            .email("merchant@test.com")
+            .role(UserRole.MERCHANT)
+            .firstName("Pierre")
+            .lastName("Boulanger")
+            .birthDate(LocalDate.of(1975, 6, 20))
+            .clientCode(null)
+            .pickupLocation(null)
+            .licensePlates(null)
+            .build();
+
+    when(userProfileService.getCurrentUserProfile(merchantId.toString(), null))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header("X-User-Id", merchantId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(merchantId.toString()))
+        .andExpect(jsonPath("$.email").value("merchant@test.com"))
+        .andExpect(jsonPath("$.role").value("MERCHANT"))
+        .andExpect(jsonPath("$.firstName").value("Pierre"))
+        .andExpect(jsonPath("$.clientCode").doesNotExist())
+        .andExpect(jsonPath("$.licensePlates").doesNotExist())
+        .andExpect(jsonPath("$.pickupLocation").doesNotExist());
+  }
+
+  @Test
+  void shouldGetCurrentUserProfileOnApiV1EndpointForAdmin() throws Exception {
+    UUID adminId = UUID.randomUUID();
+    UserResponse response =
+        UserResponse.builder()
+            .id(adminId)
+            .email("admin@test.com")
+            .role(UserRole.ADMIN)
+            .firstName("Admin")
+            .lastName("ShopLoc")
+            .birthDate(LocalDate.of(1980, 1, 1))
+            .clientCode(null)
+            .pickupLocation(null)
+            .licensePlates(null)
+            .build();
+
+    when(userProfileService.getCurrentUserProfile(adminId.toString(), null)).thenReturn(response);
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header("X-User-Id", adminId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(adminId.toString()))
+        .andExpect(jsonPath("$.email").value("admin@test.com"))
+        .andExpect(jsonPath("$.role").value("ADMIN"))
+        .andExpect(jsonPath("$.clientCode").doesNotExist())
+        .andExpect(jsonPath("$.licensePlates").doesNotExist())
+        .andExpect(jsonPath("$.pickupLocation").doesNotExist());
+  }
+
+  @Test
   void shouldReturnUnauthorizedWhenMeCalledWithoutHeaders() throws Exception {
     when(userProfileService.getCurrentUserProfile(null, null))
         .thenThrow(

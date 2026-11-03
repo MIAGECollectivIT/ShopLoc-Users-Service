@@ -5,9 +5,11 @@ import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
+import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.entity.UserStore;
+import fr.miage.collectivit.usersservice.exception.ForbiddenException;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;
@@ -144,10 +146,12 @@ public class UserProfileServiceImpl implements UserProfileService {
     user.setFirstName(request.firstName().trim());
     user.setLastName(request.lastName().trim());
     user.setBirthDate(request.birthDate());
-    user.setPickupLocation(
-        (request.pickupLocation() != null && !request.pickupLocation().isBlank())
-            ? request.pickupLocation().trim()
-            : null);
+    if (user instanceof Client client) {
+      client.setPickupLocation(
+          (request.pickupLocation() != null && !request.pickupLocation().isBlank())
+              ? request.pickupLocation().trim()
+              : null);
+    }
 
     User savedUser = userRepository.save(user);
     return UserResponse.fromEntity(savedUser);
@@ -164,30 +168,33 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional(readOnly = true)
   public List<VehicleResponse> getVehicles(UUID userId) {
     User user = findUserByPublicId(userId);
-    if (user.getLicensePlates() == null) {
+    if (!(user instanceof Client client) || client.getLicensePlates() == null) {
       return List.of();
     }
-    return user.getLicensePlates().stream().map(VehicleResponse::fromLicensePlate).toList();
+    return client.getLicensePlates().stream().map(VehicleResponse::fromLicensePlate).toList();
   }
 
   @Override
   @Transactional
   public VehicleResponse addVehicle(UUID userId, VehicleRequest request) {
     User user = findUserByPublicId(userId);
+    if (!(user instanceof Client client)) {
+      throw new ForbiddenException("Seuls les clients peuvent enregistrer un véhicule.");
+    }
     String plate = FrenchLicensePlateValidator.normalize(request.licensePlate());
 
-    if (user.getLicensePlates() == null) {
-      user.setLicensePlates(new ArrayList<>());
+    if (client.getLicensePlates() == null) {
+      client.setLicensePlates(new ArrayList<>());
     }
 
     boolean alreadyExists =
-        user.getLicensePlates().stream().anyMatch(existing -> existing.equalsIgnoreCase(plate));
+        client.getLicensePlates().stream().anyMatch(existing -> existing.equalsIgnoreCase(plate));
     if (alreadyExists) {
       throw new VehicleAlreadyExistsException(plate);
     }
 
-    user.getLicensePlates().add(plate);
-    userRepository.save(user);
+    client.getLicensePlates().add(plate);
+    userRepository.save(client);
     return VehicleResponse.fromLicensePlate(plate);
   }
 
@@ -195,18 +202,20 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public void removeVehicle(UUID userId, String vehicleId) {
     User user = findUserByPublicId(userId);
-    if (user.getLicensePlates() == null || user.getLicensePlates().isEmpty()) {
+    if (!(user instanceof Client client)
+        || client.getLicensePlates() == null
+        || client.getLicensePlates().isEmpty()) {
       throw new VehicleNotFoundException(vehicleId);
     }
 
     String targetPlate = FrenchLicensePlateValidator.normalize(vehicleId);
     boolean removed =
-        user.getLicensePlates().removeIf(plate -> plate.equalsIgnoreCase(targetPlate));
+        client.getLicensePlates().removeIf(plate -> plate.equalsIgnoreCase(targetPlate));
     if (!removed) {
       throw new VehicleNotFoundException(vehicleId);
     }
 
-    userRepository.save(user);
+    userRepository.save(client);
   }
 
   private User findUserByPublicId(UUID userId) {
