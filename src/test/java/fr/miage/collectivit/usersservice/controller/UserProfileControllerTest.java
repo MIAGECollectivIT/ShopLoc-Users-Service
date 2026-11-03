@@ -19,10 +19,12 @@ import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.entity.UserRole;
+import fr.miage.collectivit.usersservice.exception.ForbiddenException;
 import fr.miage.collectivit.usersservice.exception.GlobalExceptionHandler;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;
+import fr.miage.collectivit.usersservice.security.JwtAuthInterceptor;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import java.time.LocalDate;
 import java.util.List;
@@ -342,5 +344,158 @@ class UserProfileControllerTest {
     mockMvc
         .perform(delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "ZZ-999-ZZ"))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldDenyAccessWhenDifferentUserRequestsVehicles() throws Exception {
+    UUID otherUserId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            get("/v1/users/{userId}/vehicles", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, otherUserId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldAllowAdminAccessingOtherUserVehicles() throws Exception {
+    UUID adminId = UUID.randomUUID();
+    when(userProfileService.getVehicles(userId)).thenReturn(List.of());
+
+    mockMvc
+        .perform(
+            get("/v1/users/{userId}/vehicles", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, adminId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldAllowSelfAccessingOwnVehicles() throws Exception {
+    when(userProfileService.getVehicles(userId)).thenReturn(List.of());
+
+    mockMvc
+        .perform(
+            get("/v1/users/{userId}/vehicles", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldReturnForbiddenWhenNonClientAddsVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("AA-123-AA");
+    when(userProfileService.addVehicle(eq(userId), any()))
+        .thenThrow(new ForbiddenException("Seuls les clients peuvent enregistrer un véhicule."));
+
+    mockMvc
+        .perform(
+            post("/v1/users/{userId}/vehicles", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldUpdateVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("DD-111-EE");
+    VehicleResponse response = VehicleResponse.fromLicensePlate("DD-111-EE");
+    when(userProfileService.updateVehicle(eq(userId), eq("AA-123-AA"), any())).thenReturn(response);
+
+    mockMvc
+        .perform(
+            put("/v1/users/{userId}/vehicles/{vehicleId}", userId, "AA-123-AA")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.licensePlate").value("DD-111-EE"));
+  }
+
+  @Test
+  void shouldDenyUpdateVehicleForDifferentUser() throws Exception {
+    UUID otherUserId = UUID.randomUUID();
+    VehicleRequest request = new VehicleRequest("DD-111-EE");
+
+    mockMvc
+        .perform(
+            put("/v1/users/{userId}/vehicles/{vehicleId}", userId, "AA-123-AA")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, otherUserId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldGetCurrentUserVehicles() throws Exception {
+    List<VehicleResponse> vehicles = List.of(VehicleResponse.fromLicensePlate("AA-123-AA"));
+    when(userProfileService.getCurrentUserVehicles(userId.toString(), null)).thenReturn(vehicles);
+
+    mockMvc
+        .perform(get("/v1/users/me/vehicles").header("X-User-Id", userId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
+  }
+
+  @Test
+  void shouldGetCurrentUserVehiclesOnApiV1Endpoint() throws Exception {
+    List<VehicleResponse> vehicles = List.of(VehicleResponse.fromLicensePlate("AA-123-AA"));
+    when(userProfileService.getCurrentUserVehicles(userId.toString(), null)).thenReturn(vehicles);
+
+    mockMvc
+        .perform(get("/api/v1/users/me/vehicles").header("X-User-Id", userId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
+  }
+
+  @Test
+  void shouldAddCurrentUserVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("BB-222-CC");
+    VehicleResponse response = VehicleResponse.fromLicensePlate("BB-222-CC");
+    when(userProfileService.addCurrentUserVehicle(eq(userId.toString()), any(), any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            post("/v1/users/me/vehicles")
+                .header("X-User-Id", userId.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(header().string("Location", "/v1/users/me/vehicles/BB-222-CC"))
+        .andExpect(jsonPath("$.licensePlate").value("BB-222-CC"));
+  }
+
+  @Test
+  void shouldUpdateCurrentUserVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("CC-333-DD");
+    VehicleResponse response = VehicleResponse.fromLicensePlate("CC-333-DD");
+    when(userProfileService.updateCurrentUserVehicle(
+            eq(userId.toString()), any(), eq("AA-123-AA"), any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            put("/v1/users/me/vehicles/{vehicleId}", "AA-123-AA")
+                .header("X-User-Id", userId.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.licensePlate").value("CC-333-DD"));
+  }
+
+  @Test
+  void shouldRemoveCurrentUserVehicle() throws Exception {
+    doNothing()
+        .when(userProfileService)
+        .removeCurrentUserVehicle(userId.toString(), null, "AA-123-AA");
+
+    mockMvc
+        .perform(
+            delete("/v1/users/me/vehicles/{vehicleId}", "AA-123-AA")
+                .header("X-User-Id", userId.toString()))
+        .andExpect(status().isNoContent());
   }
 }
