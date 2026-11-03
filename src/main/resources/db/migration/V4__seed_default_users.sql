@@ -18,47 +18,47 @@ INSERT INTO users (
     created_at,
     updated_at
 ) VALUES
--- Administrateur (Alexandre Vasseur)
+-- Admin
 (
     gen_random_uuid(),
     'a.vasseur82@shop-loc.fr',
     '$2b$12$OSo6j4kbXSBnEpO0W4S8j.xD7AIW2g1VJlHZUOlC6GwUH03Ztg30q',
     'ADMIN',
-    'Alexandre',
+    'Marius',
     'Vasseur',
-    '1982-04-12',
-    'AD84912',
-    'Mairie Centrale',
+    '1982-05-14',
+    'AD82001',
+    NULL,
     '{}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 ),
--- Commerçant Partenaire (Camille Morel)
+-- Merchant
 (
     gen_random_uuid(),
     'c.morel47@shop-loc.fr',
     '$2b$12$yVg1vy8GRG4o.LacPpLw..g/PffoLoHFlkPxqFvTbzsi6WWPTKAGO',
     'MERCHANT',
-    'Camille',
+    'Suzanne',
     'Morel',
     '1987-09-23',
-    'ME61028',
-    'Comptoir des Halles',
+    'MR47001',
+    NULL,
     '{}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 ),
--- Client Adhérent (Julien Dufour)
+-- Client
 (
     gen_random_uuid(),
     'j.dufour95@shop-loc.fr',
     '$2b$12$3hmn0i6r8BJA0TZ0T55IwezbW23IKNsB6y1Rh09L9yxzIlhGWIHAa',
     'CLIENT',
-    'Julien',
+    'Pierre',
     'Dufour',
     '1995-11-04',
-    'CL73954',
-    'Mairie Annexe Ouest',
+    'CL95001',
+    'Mairie Centrale',
     '{"AA-123-BB"}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
