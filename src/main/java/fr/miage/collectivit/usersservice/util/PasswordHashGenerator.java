@@ -4,8 +4,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Utility class to generate BCrypt password hashes matching the application's security configuration (strength 12).
- * Can be executed directly from IDE or CLI.
+ * Utility class to generate BCrypt password hashes matching the application's security
+ * configuration (strength 12). Can be executed directly from IDE or CLI.
  */
 public final class PasswordHashGenerator {
 
