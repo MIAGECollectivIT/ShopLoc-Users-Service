@@ -14,7 +14,7 @@ INSERT INTO users (
     created_at,
     updated_at
 ) VALUES
--- Admin (no license plate)
+-- Admin
 (
     gen_random_uuid(),
     'marius.vasseur@shop-loc.fr',
@@ -29,7 +29,7 @@ INSERT INTO users (
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 ),
--- Merchant (no license plate)
+-- Merchant
 (
     gen_random_uuid(),
     'suzanne.morel@shop-loc.fr',
@@ -44,7 +44,7 @@ INSERT INTO users (
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 ),
--- Client (only the client has a registered license plate)
+-- Client
 (
     gen_random_uuid(),
     'pierre.dufour@shop-loc.fr',
