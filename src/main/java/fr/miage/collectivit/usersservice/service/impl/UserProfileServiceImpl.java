@@ -168,7 +168,10 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional(readOnly = true)
   public List<VehicleResponse> getVehicles(UUID userId) {
     User user = findUserByPublicId(userId);
-    if (!(user instanceof Client client) || client.getLicensePlates() == null) {
+    if (!(user instanceof Client client)) {
+      throw new ForbiddenException("Seuls les clients peuvent posséder des véhicules.");
+    }
+    if (client.getLicensePlates() == null) {
       return List.of();
     }
     return client.getLicensePlates().stream().map(VehicleResponse::fromLicensePlate).toList();
@@ -202,9 +205,10 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public void removeVehicle(UUID userId, String vehicleId) {
     User user = findUserByPublicId(userId);
-    if (!(user instanceof Client client)
-        || client.getLicensePlates() == null
-        || client.getLicensePlates().isEmpty()) {
+    if (!(user instanceof Client client)) {
+      throw new ForbiddenException("Seuls les clients peuvent gérer les véhicules.");
+    }
+    if (client.getLicensePlates() == null || client.getLicensePlates().isEmpty()) {
       throw new VehicleNotFoundException(vehicleId);
     }
 

@@ -8,6 +8,7 @@ import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.exception.ForbiddenException;
+import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.security.JwtAuthInterceptor;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,12 +40,13 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(
     name = "User Profile",
     description = "Operations related to managing user profiles and vehicles")
-@SuppressWarnings("PMD.ExcessiveImports")
+@SuppressWarnings({"PMD.ExcessiveImports", "PMD.TooManyMethods"})
 public class UserProfileController {
 
   private static final String OK_STATUS = "200";
   private static final String NOT_FOUND_STATUS = "404";
   private static final String USER_NOT_FOUND_MSG = "User profile not found";
+  private static final String FORBIDDEN_STATUS = "403";
   private static final String ROLE_ADMIN = "ADMIN";
 
   private final UserProfileService userProfileService;
@@ -102,7 +104,7 @@ public class UserProfileController {
     @ApiResponse(responseCode = OK_STATUS, description = "User profile found"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG),
     @ApiResponse(
-        responseCode = "403",
+        responseCode = FORBIDDEN_STATUS,
         description = "Access denied: cannot view another user's personal profile")
   })
   public ResponseEntity<UserResponse> getUserProfile(
@@ -145,6 +147,47 @@ public class UserProfileController {
     if (!isSelf) {
       throw new ForbiddenException(
           "Accès refusé : vous n'êtes pas autorisé à consulter les données personnelles de cet utilisateur.");
+    }
+  }
+
+  private void checkUserAccess(UUID targetUserId, HttpServletRequest servletRequest) {
+    if (servletRequest == null || targetUserId == null) {
+      return;
+    }
+    String role = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ROLE);
+    if (ROLE_ADMIN.equalsIgnoreCase(role)) {
+      return;
+    }
+
+    String authUserId = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ID);
+    String authEmail = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_EMAIL);
+    if (isUnauthenticated(role, authUserId, authEmail)) {
+      return;
+    }
+
+    if (isTargetUser(targetUserId, authUserId, authEmail)) {
+      return;
+    }
+
+    throw new ForbiddenException(
+        "Accès refusé : vous n'êtes pas autorisé à gérer les véhicules de cet utilisateur.");
+  }
+
+  private boolean isUnauthenticated(String role, String authUserId, String authEmail) {
+    return role == null && authUserId == null && authEmail == null;
+  }
+
+  private boolean isTargetUser(UUID targetUserId, String authUserId, String authEmail) {
+    return (authUserId != null && authUserId.equalsIgnoreCase(targetUserId.toString()))
+        || (authEmail != null && isUserEmailMatching(targetUserId, authEmail));
+  }
+
+  private boolean isUserEmailMatching(UUID targetUserId, String authEmail) {
+    try {
+      UserResponse userResponse = userProfileService.getUserProfile(targetUserId);
+      return userResponse != null && authEmail.equalsIgnoreCase(userResponse.email());
+    } catch (UserNotFoundException ignored) {
+      return false;
     }
   }
 
@@ -198,10 +241,17 @@ public class UserProfileController {
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = OK_STATUS, description = "List of vehicles"),
+    @ApiResponse(responseCode = FORBIDDEN_STATUS, description = "Access denied"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
   })
-  public ResponseEntity<List<VehicleResponse>> getVehicles(@PathVariable UUID userId) {
+  public ResponseEntity<List<VehicleResponse>> getVehicles(
+      @PathVariable UUID userId, HttpServletRequest servletRequest) {
+    checkUserAccess(userId, servletRequest);
     return ResponseEntity.ok(userProfileService.getVehicles(userId));
+  }
+
+  public ResponseEntity<List<VehicleResponse>> getVehicles(UUID userId) {
+    return getVehicles(userId, null);
   }
 
   @PostMapping("/{userId}/vehicles")
@@ -212,16 +262,24 @@ public class UserProfileController {
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Vehicle successfully added"),
     @ApiResponse(responseCode = "400", description = "Invalid license plate"),
+    @ApiResponse(responseCode = FORBIDDEN_STATUS, description = "Access denied"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG),
     @ApiResponse(
         responseCode = "409",
         description = "Vehicle license plate already registered for this user")
   })
   public ResponseEntity<VehicleResponse> addVehicle(
-      @PathVariable UUID userId, @Valid @RequestBody VehicleRequest request) {
+      @PathVariable UUID userId,
+      @Valid @RequestBody VehicleRequest request,
+      HttpServletRequest servletRequest) {
+    checkUserAccess(userId, servletRequest);
     VehicleResponse response = userProfileService.addVehicle(userId, request);
     URI location = URI.create("/v1/users/" + userId + "/vehicles/" + response.licensePlate());
     return ResponseEntity.created(location).body(response);
+  }
+
+  public ResponseEntity<VehicleResponse> addVehicle(UUID userId, VehicleRequest request) {
+    return addVehicle(userId, request, null);
   }
 
   @DeleteMapping("/{userId}/vehicles/{vehicleId}")
@@ -231,11 +289,19 @@ public class UserProfileController {
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Vehicle successfully removed"),
+    @ApiResponse(responseCode = FORBIDDEN_STATUS, description = "Access denied"),
     @ApiResponse(responseCode = NOT_FOUND_STATUS, description = "User or vehicle not found")
   })
   public ResponseEntity<Void> removeVehicle(
-      @PathVariable UUID userId, @PathVariable String vehicleId) {
+      @PathVariable UUID userId,
+      @PathVariable String vehicleId,
+      HttpServletRequest servletRequest) {
+    checkUserAccess(userId, servletRequest);
     userProfileService.removeVehicle(userId, vehicleId);
     return ResponseEntity.noContent().build();
+  }
+
+  public ResponseEntity<Void> removeVehicle(UUID userId, String vehicleId) {
+    return removeVehicle(userId, vehicleId, null);
   }
 }

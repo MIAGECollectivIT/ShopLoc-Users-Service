@@ -19,10 +19,12 @@ import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.entity.UserRole;
+import fr.miage.collectivit.usersservice.exception.ForbiddenException;
 import fr.miage.collectivit.usersservice.exception.GlobalExceptionHandler;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;
+import fr.miage.collectivit.usersservice.security.JwtAuthInterceptor;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import java.time.LocalDate;
 import java.util.List;
@@ -342,5 +344,56 @@ class UserProfileControllerTest {
     mockMvc
         .perform(delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "ZZ-999-ZZ"))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldDenyAccessWhenDifferentUserRequestsVehicles() throws Exception {
+    UUID otherUserId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            get("/v1/users/{userId}/vehicles", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, otherUserId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldAllowAdminAccessingOtherUserVehicles() throws Exception {
+    UUID adminId = UUID.randomUUID();
+    when(userProfileService.getVehicles(userId)).thenReturn(List.of());
+
+    mockMvc
+        .perform(
+            get("/v1/users/{userId}/vehicles", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, adminId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldAllowSelfAccessingOwnVehicles() throws Exception {
+    when(userProfileService.getVehicles(userId)).thenReturn(List.of());
+
+    mockMvc
+        .perform(
+            get("/v1/users/{userId}/vehicles", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldReturnForbiddenWhenNonClientAddsVehicle() throws Exception {
+    VehicleRequest request = new VehicleRequest("AA-123-AA");
+    when(userProfileService.addVehicle(eq(userId), any()))
+        .thenThrow(new ForbiddenException("Seuls les clients peuvent enregistrer un véhicule."));
+
+    mockMvc
+        .perform(
+            post("/v1/users/{userId}/vehicles", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isForbidden());
   }
 }
