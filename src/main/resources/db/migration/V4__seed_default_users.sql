@@ -33,7 +33,7 @@ INSERT INTO users (
 (
     gen_random_uuid(),
     'suzanne.morel@shop-loc.fr',
-    '$2a$12$WIp8VuYIjAUgtbFinTv8y.0PFkl2sFUapw5ta29D.A4BibO2CFOmW',
+    '$2a$12$tLc8NkeSjiH95vzVXQXsaOlEZzJRIbs5POOlDR4zZSSEWWaTiGhh2',
     'MERCHANT',
     'Suzanne',
     'Morel',
