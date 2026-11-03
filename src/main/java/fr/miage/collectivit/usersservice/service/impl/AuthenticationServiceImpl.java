@@ -6,8 +6,8 @@ import fr.miage.collectivit.usersservice.dto.AuthResponse;
 import fr.miage.collectivit.usersservice.dto.LoginRequest;
 import fr.miage.collectivit.usersservice.dto.UserRegistrationRequest;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
+import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
-import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.AccountLockedException;
 import fr.miage.collectivit.usersservice.exception.EmailAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
@@ -196,13 +196,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         (request.pickupLocation() != null && !request.pickupLocation().isBlank())
             ? request.pickupLocation().trim()
             : null;
-    return User.builder()
+    return Client.builder()
         .firstName(request.firstName().trim())
         .lastName(request.lastName().trim())
         .birthDate(request.birthDate())
         .email(email)
         .passwordHash(hashedPassword)
-        .role(UserRole.CLIENT)
         .clientCode(generateUniqueClientCode())
         .pickupLocation(pickupLoc)
         .licensePlates(plates)

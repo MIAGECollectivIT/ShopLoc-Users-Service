@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.miage.collectivit.usersservice.dto.LoginRequest;
 import fr.miage.collectivit.usersservice.dto.UserRegistrationRequest;
 import fr.miage.collectivit.usersservice.dto.UserStoreLinkRequest;
+import fr.miage.collectivit.usersservice.entity.Admin;
+import fr.miage.collectivit.usersservice.entity.Client;
+import fr.miage.collectivit.usersservice.entity.Merchant;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
@@ -29,6 +32,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
 @Transactional
+@SuppressWarnings("PMD.TooManyMethods")
 class UserSecurityIntegrationTest {
 
   @Autowired private WebApplicationContext webApplicationContext;
@@ -83,15 +87,13 @@ class UserSecurityIntegrationTest {
   @DisplayName(
       "POST /v1/users/login valide les identifiants et retourne un token JWT porteur du rôle")
   void shouldAuthenticateAndIssueJwtWithRole() throws Exception {
-    User user =
-        User.builder()
+    Merchant user =
+        Merchant.builder()
             .firstName("Bob")
             .lastName("Merchant")
             .birthDate(LocalDate.of(1985, 8, 15))
             .email("bob.merchant@example.com")
             .passwordHash(passwordEncoder.encode("MerchantPass1!"))
-            .role(UserRole.MERCHANT)
-            .clientCode("CL12345")
             .build();
     userRepository.saveAndFlush(user);
 
@@ -113,14 +115,13 @@ class UserSecurityIntegrationTest {
   @Test
   @DisplayName("POST /v1/users/login avec mauvais mot de passe renvoie 401")
   void shouldRejectInvalidCredentials() throws Exception {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .firstName("Marc")
             .lastName("Dupont")
             .birthDate(LocalDate.of(1980, 1, 1))
             .email("marc.bad@example.com")
             .passwordHash(passwordEncoder.encode("GoodPassword1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL88888")
             .build();
     userRepository.saveAndFlush(user);
@@ -139,14 +140,13 @@ class UserSecurityIntegrationTest {
   @Test
   @DisplayName("POST /v1/users/login verrouille le compte après 5 tentatives échouées (HTTP 423)")
   void shouldLockAccountAfterFiveConsecutiveFailedAttempts() throws Exception {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .firstName("Alice")
             .lastName("Lockout")
             .birthDate(LocalDate.of(1990, 5, 20))
             .email("alice.lockout@example.com")
             .passwordHash(passwordEncoder.encode("GoodPassword1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL99999")
             .build();
     userRepository.saveAndFlush(user);
@@ -179,12 +179,14 @@ class UserSecurityIntegrationTest {
             .email("alice.lockout@example.com")
             .password("GoodPassword1!")
             .build();
+
     mockMvc
         .perform(
             post("/v1/users/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(goodRequest)))
-        .andExpect(status().isLocked());
+        .andExpect(status().isLocked())
+        .andExpect(jsonPath("$.type").value("https://errors.shoploc.com/account-locked"));
   }
 
   @Test
@@ -196,14 +198,13 @@ class UserSecurityIntegrationTest {
   @Test
   @DisplayName("GET /v1/users/me avec token Bearer valide renvoie 200 OK")
   void shouldAllowMeEndpointWhenTokenValid() throws Exception {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .firstName("Leo")
             .lastName("Dupuis")
             .birthDate(LocalDate.of(1995, 3, 20))
             .email("leo.valid@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL55667")
             .build();
     User savedUser = userRepository.saveAndFlush(user);
@@ -220,14 +221,13 @@ class UserSecurityIntegrationTest {
   @Test
   @DisplayName("POST /v1/users/logout révoque le jeton et bloque les accès ultérieurs")
   void shouldRevokeTokenOnLogoutAndDenySubsequentRequests() throws Exception {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .firstName("Claire")
             .lastName("LogoutTest")
             .birthDate(LocalDate.of(1992, 4, 10))
             .email("claire.logout@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL99112")
             .build();
     User savedUser = userRepository.saveAndFlush(user);
@@ -254,15 +254,13 @@ class UserSecurityIntegrationTest {
   @DisplayName(
       "GET /v1/users/{identifier} fonctionne par UUID et par ID numérique pour son propre compte")
   void shouldAllowAccessByNumericIdAndUuidWithToken() throws Exception {
-    User user =
-        User.builder()
+    Merchant user =
+        Merchant.builder()
             .firstName("Sophie")
             .lastName("Polymorphic")
             .birthDate(LocalDate.of(1991, 7, 25))
             .email("sophie.poly@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.MERCHANT)
-            .clientCode("CL77331")
             .build();
     User savedUser = userRepository.saveAndFlush(user);
     String token = jwtTokenService.generateToken(savedUser);
@@ -285,26 +283,24 @@ class UserSecurityIntegrationTest {
   @DisplayName(
       "GET /v1/users/{userId} pour un autre utilisateur sans rôle ADMIN renvoie 403 Forbidden")
   void shouldDenyAccessToAnotherUserProfileForNonAdminUser() throws Exception {
-    User victim =
-        User.builder()
+    Client victim =
+        Client.builder()
             .firstName("Victim")
             .lastName("User")
             .birthDate(LocalDate.of(1990, 1, 1))
             .email("victim@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL11223")
             .build();
     User savedVictim = userRepository.saveAndFlush(victim);
 
-    User attacker =
-        User.builder()
+    Client attacker =
+        Client.builder()
             .firstName("Attacker")
             .lastName("User")
             .birthDate(LocalDate.of(1995, 2, 2))
             .email("attacker@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL99887")
             .build();
     User savedAttacker = userRepository.saveAndFlush(attacker);
@@ -320,27 +316,24 @@ class UserSecurityIntegrationTest {
   @Test
   @DisplayName("GET /v1/users/{userId} pour un autre utilisateur avec rôle ADMIN renvoie 200 OK")
   void shouldAllowAdminToAccessAnyUserProfile() throws Exception {
-    User victim =
-        User.builder()
+    Client victim =
+        Client.builder()
             .firstName("Victim2")
             .lastName("User2")
             .birthDate(LocalDate.of(1990, 1, 1))
             .email("victim2@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL33445")
             .build();
     User savedVictim = userRepository.saveAndFlush(victim);
 
-    User admin =
-        User.builder()
+    Admin admin =
+        Admin.builder()
             .firstName("Admin")
             .lastName("Boss")
             .birthDate(LocalDate.of(1980, 3, 3))
             .email("admin.security@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.ADMIN)
-            .clientCode("AD99999")
             .build();
     User savedAdmin = userRepository.saveAndFlush(admin);
     String adminToken = jwtTokenService.generateToken(savedAdmin);
@@ -356,15 +349,13 @@ class UserSecurityIntegrationTest {
   @Test
   @DisplayName("POST /v1/users/stores enregistre le lien entre commerce et utilisateur")
   void shouldAllowStoreLinkEndpointWithToken() throws Exception {
-    User user =
-        User.builder()
+    Merchant user =
+        Merchant.builder()
             .firstName("Pierre")
             .lastName("Partner")
             .birthDate(LocalDate.of(1982, 11, 14))
             .email("pierre.partner@example.com")
             .passwordHash(passwordEncoder.encode("SecretPass1!"))
-            .role(UserRole.MERCHANT)
-            .clientCode("CL44556")
             .build();
     User savedUser = userRepository.saveAndFlush(user);
     String token = jwtTokenService.generateToken(savedUser);
@@ -390,14 +381,13 @@ class UserSecurityIntegrationTest {
   @DisplayName(
       "GET /v1/auth/verify avec Cookie shoploc_token retourne 200 et les headers d'identité")
   void shouldAuthenticateViaSessionCookie() throws Exception {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .firstName("Sophie")
             .lastName("Client")
             .birthDate(LocalDate.of(1995, 4, 20))
             .email("sophie.cookie@example.com")
             .passwordHash(passwordEncoder.encode("CookiePass1!"))
-            .role(UserRole.CLIENT)
             .clientCode("CL98765")
             .build();
     User savedUser = userRepository.saveAndFlush(user);

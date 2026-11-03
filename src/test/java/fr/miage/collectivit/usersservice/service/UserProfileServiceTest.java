@@ -10,6 +10,7 @@ import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
+import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
@@ -37,18 +38,17 @@ class UserProfileServiceTest {
   @InjectMocks private UserProfileServiceImpl userProfileService;
 
   private UUID userId;
-  private User existingUser;
+  private Client existingUser;
 
   @BeforeEach
   void setUp() {
     userId = UUID.randomUUID();
     existingUser =
-        User.builder()
+        Client.builder()
             .id(1L)
             .publicId(userId)
             .email("user@example.com")
             .passwordHash("$2a$12$fakeHash")
-            .role(UserRole.CLIENT)
             .firstName("Sophie")
             .lastName("Martin")
             .birthDate(LocalDate.of(1988, 4, 12))

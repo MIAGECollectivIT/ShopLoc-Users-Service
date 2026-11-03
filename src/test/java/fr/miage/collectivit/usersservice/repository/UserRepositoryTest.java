@@ -3,6 +3,9 @@ package fr.miage.collectivit.usersservice.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import fr.miage.collectivit.usersservice.entity.Admin;
+import fr.miage.collectivit.usersservice.entity.Client;
+import fr.miage.collectivit.usersservice.entity.Merchant;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
 import java.time.LocalDate;
@@ -20,14 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
 class UserRepositoryTest {
 
   @Autowired private UserRepository userRepository;
+  @Autowired private ClientRepository clientRepository;
 
   @Test
   void shouldSaveAndRetrieveUserWithAllAttributes() {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .email("client.dupont@example.com")
             .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
-            .role(UserRole.CLIENT)
             .firstName("Jean")
             .lastName("Dupont")
             .birthDate(LocalDate.of(1990, 5, 15))
@@ -56,11 +59,10 @@ class UserRepositoryTest {
 
   @Test
   void shouldSaveAndRetrieveUserWithoutPickupLocation() {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .email("no.pickup@example.com")
             .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
-            .role(UserRole.CLIENT)
             .firstName("Chloe")
             .lastName("Giraud")
             .birthDate(LocalDate.of(1996, 9, 12))
@@ -77,8 +79,8 @@ class UserRepositoryTest {
 
   @Test
   void shouldFindUserByEmailAndCheckExistence() {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .email("unique.email@example.com")
             .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
             .firstName("Alice")
@@ -101,8 +103,8 @@ class UserRepositoryTest {
 
   @Test
   void shouldFindUserByClientCodeAndCheckExistence() {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .email("client.code@example.com")
             .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
             .firstName("Bob")
@@ -124,8 +126,8 @@ class UserRepositoryTest {
 
   @Test
   void shouldEnforceEmailUniquenessConstraint() {
-    User user1 =
-        User.builder()
+    Client user1 =
+        Client.builder()
             .email("duplicate@example.com")
             .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
             .firstName("First")
@@ -137,8 +139,8 @@ class UserRepositoryTest {
 
     userRepository.saveAndFlush(user1);
 
-    User user2 =
-        User.builder()
+    Client user2 =
+        Client.builder()
             .email("duplicate@example.com")
             .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
             .firstName("Second")
@@ -154,8 +156,8 @@ class UserRepositoryTest {
 
   @Test
   void shouldSupportEmptyLicensePlates() {
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .email("no.plates@example.com")
             .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
             .firstName("Claire")
@@ -170,5 +172,39 @@ class UserRepositoryTest {
     Optional<User> found = userRepository.findByPublicId(saved.getPublicId());
     assertThat(found).isPresent();
     assertThat(found.get().getLicensePlates()).isEmpty();
+  }
+
+  @Test
+  void shouldSaveAndRetrieveAdminAndMerchantWithoutClientAttributes() {
+    Admin admin =
+        Admin.builder()
+            .email("admin@shop-loc.fr")
+            .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
+            .firstName("Admin")
+            .lastName("System")
+            .birthDate(LocalDate.of(1980, 1, 1))
+            .build();
+
+    Merchant merchant =
+        Merchant.builder()
+            .email("merchant@shop-loc.fr")
+            .passwordHash("$2a$12$e8r3X4Yk7Z1abcFakeHashForTestingOnly")
+            .firstName("Marchand")
+            .lastName("Local")
+            .birthDate(LocalDate.of(1985, 2, 2))
+            .build();
+
+    User savedAdmin = userRepository.save(admin);
+    User savedMerchant = userRepository.save(merchant);
+
+    assertThat(savedAdmin.getRole()).isEqualTo(UserRole.ADMIN);
+    assertThat(savedAdmin.getClientCode()).isNull();
+    assertThat(savedAdmin.getPickupLocation()).isNull();
+    assertThat(savedAdmin.getLicensePlates()).isEmpty();
+
+    assertThat(savedMerchant.getRole()).isEqualTo(UserRole.MERCHANT);
+    assertThat(savedMerchant.getClientCode()).isNull();
+    assertThat(savedMerchant.getPickupLocation()).isNull();
+    assertThat(savedMerchant.getLicensePlates()).isEmpty();
   }
 }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import fr.miage.collectivit.usersservice.dto.UserResponse;
+import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
@@ -29,13 +30,12 @@ class LoyaltyCardIdentificationServiceTest {
   @Test
   void shouldIdentifyUserByCardNumber() {
     String cardNumber = "k7P9xQ2";
-    User user =
-        User.builder()
+    Client user =
+        Client.builder()
             .id(1L)
             .publicId(UUID.randomUUID())
             .email("client@loyalty.com")
             .passwordHash("$2a$12$fakeHash")
-            .role(UserRole.CLIENT)
             .firstName("Luc")
             .lastName("Garnier")
             .birthDate(LocalDate.of(1982, 11, 3))
@@ -59,6 +59,6 @@ class LoyaltyCardIdentificationServiceTest {
 
     assertThatThrownBy(() -> loyaltyCardIdentificationService.identifyByCardNumber(unknownCard))
         .isInstanceOf(UserNotFoundException.class)
-        .hasMessageContaining(unknownCard);
+        .hasMessageContaining("User not found with loyalty card: UNKNOWN");
   }
 }
