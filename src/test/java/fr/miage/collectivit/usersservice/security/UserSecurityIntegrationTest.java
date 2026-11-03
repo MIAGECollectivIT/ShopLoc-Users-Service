@@ -218,6 +218,94 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
+  @DisplayName("GET /api/v1/users/me avec token Bearer valide pour un Client renvoie 200 OK avec toutes les infos")
+  void shouldAllowApiMeEndpointWhenClientTokenValid() throws Exception {
+    Client user =
+        Client.builder()
+            .firstName("Emma")
+            .lastName("Client")
+            .birthDate(LocalDate.of(1996, 7, 14))
+            .email("emma.client@example.com")
+            .passwordHash(passwordEncoder.encode("SecretPass1!"))
+            .clientCode("CL11223")
+            .pickupLocation("Mairie Centrale")
+            .licensePlates(List.of("AA-123-BB"))
+            .build();
+    User savedUser = userRepository.saveAndFlush(user);
+
+    String token = jwtTokenService.generateToken(savedUser);
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("emma.client@example.com"))
+        .andExpect(jsonPath("$.role").value("CLIENT"))
+        .andExpect(jsonPath("$.firstName").value("Emma"))
+        .andExpect(jsonPath("$.lastName").value("Client"))
+        .andExpect(jsonPath("$.clientCode").value("CL11223"))
+        .andExpect(jsonPath("$.pickupLocation").value("Mairie Centrale"))
+        .andExpect(jsonPath("$.licensePlates[0]").value("AA-123-BB"));
+  }
+
+  @Test
+  @DisplayName("GET /api/v1/users/me avec token Bearer valide pour un Merchant renvoie 200 OK sans code client ni plaques")
+  void shouldAllowApiMeEndpointWhenMerchantTokenValidWithoutClientFields() throws Exception {
+    Merchant user =
+        Merchant.builder()
+            .firstName("Hugo")
+            .lastName("Marchand")
+            .birthDate(LocalDate.of(1985, 3, 10))
+            .email("hugo.marchand@example.com")
+            .passwordHash(passwordEncoder.encode("SecretPass1!"))
+            .build();
+    User savedUser = userRepository.saveAndFlush(user);
+
+    String token = jwtTokenService.generateToken(savedUser);
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("hugo.marchand@example.com"))
+        .andExpect(jsonPath("$.role").value("MERCHANT"))
+        .andExpect(jsonPath("$.firstName").value("Hugo"))
+        .andExpect(jsonPath("$.clientCode").doesNotExist())
+        .andExpect(jsonPath("$.pickupLocation").doesNotExist())
+        .andExpect(jsonPath("$.licensePlates").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("GET /api/v1/users/me avec token Bearer valide pour un Admin renvoie 200 OK sans code client ni plaques")
+  void shouldAllowApiMeEndpointWhenAdminTokenValidWithoutClientFields() throws Exception {
+    Admin user =
+        Admin.builder()
+            .firstName("Super")
+            .lastName("Admin")
+            .birthDate(LocalDate.of(1980, 1, 1))
+            .email("super.admin@example.com")
+            .passwordHash(passwordEncoder.encode("SecretPass1!"))
+            .build();
+    User savedUser = userRepository.saveAndFlush(user);
+
+    String token = jwtTokenService.generateToken(savedUser);
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("super.admin@example.com"))
+        .andExpect(jsonPath("$.role").value("ADMIN"))
+        .andExpect(jsonPath("$.firstName").value("Super"))
+        .andExpect(jsonPath("$.clientCode").doesNotExist())
+        .andExpect(jsonPath("$.pickupLocation").doesNotExist())
+        .andExpect(jsonPath("$.licensePlates").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("GET /api/v1/users/me sans token renvoie 401 Unauthorized")
+  void shouldDenyApiMeEndpointWhenTokenMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/users/me")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
   @DisplayName("POST /v1/users/logout révoque le jeton et bloque les accès ultérieurs")
   void shouldRevokeTokenOnLogoutAndDenySubsequentRequests() throws Exception {
     Client user =

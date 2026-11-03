@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.entity.Client;
-import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.repository.ClientRepository;
 import fr.miage.collectivit.usersservice.service.impl.LoyaltyCardIdentificationServiceImpl;

@@ -202,7 +202,7 @@ public class JwtTokenService {
     if (asymmetric && rsaPublicKey instanceof java.security.interfaces.RSAPublicKey rsaPub) {
       String n =
           java.util.Base64.getUrlEncoder()
-               .withoutPadding()
+              .withoutPadding()
               .encodeToString(rsaPub.getModulus().toByteArray());
       String e =
           java.util.Base64.getUrlEncoder()
