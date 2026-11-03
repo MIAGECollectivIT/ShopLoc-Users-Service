@@ -10,8 +10,11 @@ import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
+import fr.miage.collectivit.usersservice.entity.Admin;
 import fr.miage.collectivit.usersservice.entity.Client;
+import fr.miage.collectivit.usersservice.entity.Merchant;
 import fr.miage.collectivit.usersservice.entity.User;
+import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;
@@ -195,6 +198,62 @@ class UserProfileServiceTest {
     assertThat(response).isNotNull();
     assertThat(response.id()).isEqualTo(userId);
     assertThat(response.email()).isEqualTo("user@example.com");
+  }
+
+  @Test
+  void shouldGetCurrentUserProfileForMerchantWithoutClientFields() {
+    UUID merchantId = UUID.randomUUID();
+    Merchant merchant =
+        Merchant.builder()
+            .id(2L)
+            .publicId(merchantId)
+            .email("merchant@example.com")
+            .firstName("Jean")
+            .lastName("Commercant")
+            .birthDate(LocalDate.of(1985, 5, 10))
+            .build();
+
+    when(userRepository.findByPublicId(merchantId)).thenReturn(Optional.of(merchant));
+
+    UserResponse response = userProfileService.getCurrentUserProfile(merchantId.toString(), null);
+
+    assertThat(response).isNotNull();
+    assertThat(response.id()).isEqualTo(merchantId);
+    assertThat(response.email()).isEqualTo("merchant@example.com");
+    assertThat(response.role()).isEqualTo(UserRole.MERCHANT);
+    assertThat(response.firstName()).isEqualTo("Jean");
+    assertThat(response.lastName()).isEqualTo("Commercant");
+    assertThat(response.clientCode()).isNull();
+    assertThat(response.pickupLocation()).isNull();
+    assertThat(response.licensePlates()).isNull();
+  }
+
+  @Test
+  void shouldGetCurrentUserProfileForAdminWithoutClientFields() {
+    UUID adminId = UUID.randomUUID();
+    Admin admin =
+        Admin.builder()
+            .id(3L)
+            .publicId(adminId)
+            .email("admin@example.com")
+            .firstName("Super")
+            .lastName("Admin")
+            .birthDate(LocalDate.of(1980, 1, 1))
+            .build();
+
+    when(userRepository.findByPublicId(adminId)).thenReturn(Optional.of(admin));
+
+    UserResponse response = userProfileService.getCurrentUserProfile(adminId.toString(), null);
+
+    assertThat(response).isNotNull();
+    assertThat(response.id()).isEqualTo(adminId);
+    assertThat(response.email()).isEqualTo("admin@example.com");
+    assertThat(response.role()).isEqualTo(UserRole.ADMIN);
+    assertThat(response.firstName()).isEqualTo("Super");
+    assertThat(response.lastName()).isEqualTo("Admin");
+    assertThat(response.clientCode()).isNull();
+    assertThat(response.pickupLocation()).isNull();
+    assertThat(response.licensePlates()).isNull();
   }
 
   @Test

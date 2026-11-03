@@ -133,7 +133,8 @@ class UserProfileControllerTest {
             .licensePlates(null)
             .build();
 
-    when(userProfileService.getCurrentUserProfile(merchantId.toString(), null)).thenReturn(response);
+    when(userProfileService.getCurrentUserProfile(merchantId.toString(), null))
+        .thenReturn(response);
 
     mockMvc
         .perform(get("/api/v1/users/me").header("X-User-Id", merchantId.toString()))

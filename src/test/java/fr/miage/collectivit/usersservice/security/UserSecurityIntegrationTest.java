@@ -218,7 +218,8 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /api/v1/users/me avec token Bearer valide pour un Client renvoie 200 OK avec toutes les infos")
+  @DisplayName(
+      "GET /api/v1/users/me avec token Bearer valide pour un Client renvoie 200 OK avec toutes les infos")
   void shouldAllowApiMeEndpointWhenClientTokenValid() throws Exception {
     Client user =
         Client.builder()
@@ -248,7 +249,8 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /api/v1/users/me avec token Bearer valide pour un Merchant renvoie 200 OK sans code client ni plaques")
+  @DisplayName(
+      "GET /api/v1/users/me avec token Bearer valide pour un Merchant renvoie 200 OK sans code client ni plaques")
   void shouldAllowApiMeEndpointWhenMerchantTokenValidWithoutClientFields() throws Exception {
     Merchant user =
         Merchant.builder()
@@ -274,7 +276,8 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /api/v1/users/me avec token Bearer valide pour un Admin renvoie 200 OK sans code client ni plaques")
+  @DisplayName(
+      "GET /api/v1/users/me avec token Bearer valide pour un Admin renvoie 200 OK sans code client ni plaques")
   void shouldAllowApiMeEndpointWhenAdminTokenValidWithoutClientFields() throws Exception {
     Admin user =
         Admin.builder()
