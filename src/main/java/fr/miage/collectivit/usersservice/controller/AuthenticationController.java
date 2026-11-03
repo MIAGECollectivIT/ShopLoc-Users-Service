@@ -17,7 +17,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Map;
+import fr.miage.collectivit.usersservice.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +40,9 @@ public class AuthenticationController {
   private final JwtTokenService jwtTokenService;
   private final TokenRevocationService tokenRevocationService;
 
+  @Value("${application.security.registration-enabled:false}")
+  private boolean registrationEnabled;
+
   @PostMapping("/users")
   @Operation(
       summary = "Register a new user",
@@ -46,10 +51,14 @@ public class AuthenticationController {
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "User successfully registered"),
     @ApiResponse(responseCode = "400", description = "Invalid registration data"),
+    @ApiResponse(responseCode = "403", description = "Public registration is disabled"),
     @ApiResponse(responseCode = "409", description = "Email already in use")
   })
   public ResponseEntity<UserResponse> register(
       @Valid @RequestBody UserRegistrationRequest request) {
+    if (!registrationEnabled) {
+      throw new ForbiddenException("Public registration is disabled.");
+    }
     UserResponse response = authenticationService.register(request);
     URI location = URI.create("/v1/users/" + response.id());
     return ResponseEntity.created(location).body(response);

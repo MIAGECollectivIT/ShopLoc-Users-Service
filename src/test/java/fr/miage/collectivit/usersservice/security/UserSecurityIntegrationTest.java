@@ -57,8 +57,8 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("POST /v1/users (inscription) est public et crée un utilisateur avec rôle CLIENT")
-  void shouldAllowPublicRegistration() throws Exception {
+  @DisplayName("POST /v1/users is disabled and returns 403 Forbidden")
+  void shouldRejectPublicRegistrationWhenDisabled() throws Exception {
     UserRegistrationRequest registrationRequest =
         UserRegistrationRequest.builder()
             .firstName("Alice")
@@ -75,9 +75,8 @@ class UserSecurityIntegrationTest {
             post("/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(registrationRequest)))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.email").value("alice.security@example.com"))
-        .andExpect(jsonPath("$.role").value("CLIENT"));
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.detail").value("Public registration is disabled."));
   }
 
   @Test

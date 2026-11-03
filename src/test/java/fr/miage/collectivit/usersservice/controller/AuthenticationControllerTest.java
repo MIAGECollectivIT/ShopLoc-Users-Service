@@ -24,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -39,11 +40,36 @@ class AuthenticationControllerTest {
 
   @BeforeEach
   void setUp() {
+    ReflectionTestUtils.setField(authenticationController, "registrationEnabled", true);
     mockMvc =
         MockMvcBuilders.standaloneSetup(authenticationController)
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
     objectMapper = new ObjectMapper().findAndRegisterModules();
+  }
+
+  @Test
+  void shouldReturnForbiddenWhenRegistrationIsDisabled() throws Exception {
+    ReflectionTestUtils.setField(authenticationController, "registrationEnabled", false);
+
+    UserRegistrationRequest request =
+        UserRegistrationRequest.builder()
+            .firstName("Luc")
+            .lastName("Dupont")
+            .birthDate(LocalDate.of(1990, 1, 1))
+            .email("client@test.com")
+            .password("P@ssw0rd123!")
+            .pickupLocation("Mairie")
+            .licensePlates(List.of("AA-123-AA"))
+            .build();
+
+    mockMvc
+        .perform(
+            post("/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.detail").value("Public registration is disabled."));
   }
 
   @Test
