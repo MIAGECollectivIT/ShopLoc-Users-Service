@@ -13,7 +13,6 @@ import fr.miage.collectivit.usersservice.entity.Admin;
 import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.Merchant;
 import fr.miage.collectivit.usersservice.entity.User;
-import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
 import java.time.LocalDate;
 import java.util.List;

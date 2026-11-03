@@ -30,7 +30,8 @@ public class Client extends User {
   @Column(name = "client_code", nullable = false, unique = true, length = 7)
   private String clientCode;
 
-  // Physical card pickup location is optional as the customer can choose not to request a physical card
+  // Physical card pickup location is optional as the customer can choose not to request a physical
+  // card
   @Column(name = "pickup_location", length = 150)
   private String pickupLocation;
 

@@ -23,6 +23,9 @@ public record UserResponse(
     Instant createdAt,
     Instant updatedAt) {
   public static UserResponse fromEntity(User user) {
+    if (user == null) {
+      return null;
+    }
     String clientCode = null;
     String pickupLocation = null;
     List<String> licensePlates = null;
@@ -32,11 +35,6 @@ public record UserResponse(
       pickupLocation = client.getPickupLocation();
       licensePlates =
           client.getLicensePlates() != null ? List.copyOf(client.getLicensePlates()) : List.of();
-    } else if (user != null && user.getClientCode() != null) {
-      clientCode = user.getClientCode();
-      pickupLocation = user.getPickupLocation();
-      licensePlates =
-          user.getLicensePlates() != null ? List.copyOf(user.getLicensePlates()) : List.of();
     }
 
     return UserResponse.builder()
@@ -48,7 +46,7 @@ public record UserResponse(
         .birthDate(user.getBirthDate())
         .clientCode(clientCode)
         .pickupLocation(pickupLocation)
-        .licensePlates(licensePlates != null ? licensePlates : List.of())
+        .licensePlates(licensePlates)
         .createdAt(user.getCreatedAt())
         .updatedAt(user.getUpdatedAt())
         .build();

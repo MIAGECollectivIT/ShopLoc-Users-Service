@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import fr.miage.collectivit.usersservice.entity.Admin;
 import fr.miage.collectivit.usersservice.entity.Client;
-import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
 import io.jsonwebtoken.Claims;
 import java.time.LocalDate;
@@ -30,7 +29,8 @@ class JwtTokenServiceTest {
   }
 
   @Test
-  @DisplayName("Génère un token valide avec claims userId, role, email et clientCode pour un Client")
+  @DisplayName(
+      "Génère un token valide avec claims userId, role, email et clientCode pour un Client")
   void shouldGenerateAndValidateTokenSuccessfully() {
     UUID publicId = UUID.randomUUID();
     Client user =

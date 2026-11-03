@@ -12,7 +12,6 @@ import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
-import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;

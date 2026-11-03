@@ -1,5 +1,6 @@
 package fr.miage.collectivit.usersservice.security;
 
+import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
 import fr.miage.collectivit.usersservice.service.TokenRevocationService;
@@ -147,9 +148,12 @@ public class JwtTokenService {
             .claim("dbId", user.getId())
             .claim("email", user.getEmail())
             .claim("role", roleName)
-            .claim("clientCode", user.getClientCode())
             .claim("firstName", user.getFirstName())
             .claim("lastName", user.getLastName());
+
+    if (user instanceof Client client && client.getClientCode() != null) {
+      builder.claim("clientCode", client.getClientCode());
+    }
 
     if (asymmetric && rsaPrivateKey != null) {
       return builder.signWith(rsaPrivateKey, Jwts.SIG.RS256).compact();
@@ -198,7 +202,7 @@ public class JwtTokenService {
     if (asymmetric && rsaPublicKey instanceof java.security.interfaces.RSAPublicKey rsaPub) {
       String n =
           java.util.Base64.getUrlEncoder()
-              .withoutPadding()
+               .withoutPadding()
               .encodeToString(rsaPub.getModulus().toByteArray());
       String e =
           java.util.Base64.getUrlEncoder()

@@ -3,6 +3,7 @@ package fr.miage.collectivit.usersservice.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.entity.Admin;
 import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.Merchant;
@@ -55,6 +56,11 @@ class UserRepositoryTest {
     assertThat(foundByPublicId.get().getPickupLocation()).isEqualTo("Mairie Centrale");
     assertThat(foundByPublicId.get().getLicensePlates()).containsExactly("AA-123-AA", "BB-456-BB");
     assertThat(foundByPublicId.get().getClientCode()).isEqualTo("aB3dE7K");
+
+    UserResponse response = UserResponse.fromEntity(saved);
+    assertThat(response.clientCode()).isEqualTo("aB3dE7K");
+    assertThat(response.pickupLocation()).isEqualTo("Mairie Centrale");
+    assertThat(response.licensePlates()).containsExactly("AA-123-AA", "BB-456-BB");
   }
 
   @Test
@@ -202,9 +208,19 @@ class UserRepositoryTest {
     assertThat(savedAdmin.getPickupLocation()).isNull();
     assertThat(savedAdmin.getLicensePlates()).isEmpty();
 
+    UserResponse adminResp = UserResponse.fromEntity(savedAdmin);
+    assertThat(adminResp.clientCode()).isNull();
+    assertThat(adminResp.pickupLocation()).isNull();
+    assertThat(adminResp.licensePlates()).isNull();
+
     assertThat(savedMerchant.getRole()).isEqualTo(UserRole.MERCHANT);
     assertThat(savedMerchant.getClientCode()).isNull();
     assertThat(savedMerchant.getPickupLocation()).isNull();
     assertThat(savedMerchant.getLicensePlates()).isEmpty();
+
+    UserResponse merchantResp = UserResponse.fromEntity(savedMerchant);
+    assertThat(merchantResp.clientCode()).isNull();
+    assertThat(merchantResp.pickupLocation()).isNull();
+    assertThat(merchantResp.licensePlates()).isNull();
   }
 }
