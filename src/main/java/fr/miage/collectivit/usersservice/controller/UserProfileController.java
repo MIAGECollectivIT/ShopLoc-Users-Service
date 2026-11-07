@@ -12,6 +12,10 @@ import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.security.JwtAuthInterceptor;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -22,6 +26,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,7 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(
     name = "User Profile",
     description = "Operations related to managing user profiles and vehicles")
-@SuppressWarnings({"PMD.ExcessiveImports", "PMD.TooManyMethods"})
+@SuppressWarnings({"PMD.ExcessiveImports", "PMD.TooManyMethods", "PMD.AvoidDuplicateLiterals"})
 public class UserProfileController {
 
   private static final String OK_STATUS = "200";
@@ -70,13 +75,33 @@ public class UserProfileController {
           "Retrieves the authenticated user's profile using identity headers or JWT session",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "Current user profile retrieved"),
-    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "Current user profile retrieved",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UserResponse.class))),
+    @ApiResponse(
+        responseCode = UNAUTHORIZED_STATUS,
+        description = UNAUTHORIZED_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content)
   })
   public ResponseEntity<UserResponse> getCurrentUserProfile(
-      @RequestHeader(value = HEADER_USER_ID, required = false) String userIdHeader,
-      @RequestHeader(value = HEADER_USER_EMAIL, required = false) String userEmailHeader,
+      @Parameter(
+              description = "Identifiant UUID transmis par la passerelle",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+          @RequestHeader(value = HEADER_USER_ID, required = false)
+          String userIdHeader,
+      @Parameter(
+              description = "Adresse email transmise par la passerelle",
+              example = "alice.dupont@example.com")
+          @RequestHeader(value = HEADER_USER_EMAIL, required = false)
+          String userEmailHeader,
       HttpServletRequest servletRequest) {
     String effectiveUserId = resolveAuthId(userIdHeader, servletRequest);
     String effectiveUserEmail = resolveAuthEmail(userEmailHeader, servletRequest);
@@ -110,10 +135,26 @@ public class UserProfileController {
   @GetMapping("/partners")
   @Operation(
       summary = "List partner merchants",
-      description = "Retrieves active registered partners for store linking")
+      description = "Retrieves active registered partners for store linking",
+      security = {})
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "List of partners matching criteria",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                array = @ArraySchema(schema = @Schema(implementation = PartnerResponse.class))))
+  })
   public ResponseEntity<List<PartnerResponse>> getPartners(
-      @RequestParam(value = "query", required = false) String query,
-      @RequestParam(value = "limit", required = false, defaultValue = "20") int limit) {
+      @Parameter(
+              description = "Filtre textuel sur le nom du commerçant ou l'enseigne",
+              example = "boulangerie")
+          @RequestParam(value = "query", required = false)
+          String query,
+      @Parameter(description = "Nombre maximal de résultats à retourner", example = "20")
+          @RequestParam(value = "limit", required = false, defaultValue = "20")
+          int limit) {
     return ResponseEntity.ok(userProfileService.getPartners(query, limit));
   }
 
@@ -123,14 +164,30 @@ public class UserProfileController {
       description = "Retrieves user profile details by public user UUID or internal numeric ID",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "User profile found"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG),
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "User profile found",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UserResponse.class))),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
-        description = "Access denied: cannot view another user's personal profile")
+        description = "Access denied: cannot view another user's personal profile",
+        content = @Content)
   })
   public ResponseEntity<UserResponse> getUserProfile(
-      @PathVariable String userId, HttpServletRequest servletRequest) {
+      @Parameter(
+              description = "Identifiant UUID public ou identifiant numérique de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              required = true)
+          @PathVariable
+          String userId,
+      HttpServletRequest servletRequest) {
     UserResponse userResponse;
     try {
       UUID publicId = UUID.fromString(userId.trim());
@@ -219,10 +276,22 @@ public class UserProfileController {
       description = "Records a relationship between a partner user and a store",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "Store successfully linked to user"),
-    @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = "Invalid request payload")
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "Store successfully linked to user",
+        content = @Content),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = "Invalid request payload",
+        content = @Content)
   })
-  public ResponseEntity<Void> linkStoreToUser(@Valid @RequestBody UserStoreLinkRequest request) {
+  public ResponseEntity<Void> linkStoreToUser(
+      @Valid
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              description = "Liaison entre le partenaire et le magasin",
+              required = true)
+          @RequestBody
+          UserStoreLinkRequest request) {
     userProfileService.linkStoreToUser(request.userId(), request.storeId());
     return ResponseEntity.ok().build();
   }
@@ -233,12 +302,35 @@ public class UserProfileController {
       description = "Updates personal details for the specified user",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "User profile updated"),
-    @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = "Invalid request payload"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "User profile updated",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UserResponse.class))),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = "Invalid request payload",
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content)
   })
   public ResponseEntity<UserResponse> updateUserProfile(
-      @PathVariable UUID userId, @Valid @RequestBody UserUpdateRequest request) {
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur à mettre à jour",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              required = true)
+          @PathVariable
+          UUID userId,
+      @Valid
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              description = "Données mises à jour du profil",
+              required = true)
+          @RequestBody
+          UserUpdateRequest request) {
     return ResponseEntity.ok(userProfileService.updateUserProfile(userId, request));
   }
 
@@ -250,10 +342,20 @@ public class UserProfileController {
   @ApiResponses({
     @ApiResponse(
         responseCode = NO_CONTENT_STATUS,
-        description = "User profile successfully deleted"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
+        description = "User profile successfully deleted",
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content)
   })
-  public ResponseEntity<Void> deleteUserProfile(@PathVariable UUID userId) {
+  public ResponseEntity<Void> deleteUserProfile(
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur à supprimer",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              required = true)
+          @PathVariable
+          UUID userId) {
     userProfileService.deleteUserProfile(userId);
     return ResponseEntity.noContent().build();
   }
@@ -264,12 +366,30 @@ public class UserProfileController {
       description = "Retrieves the list of registered vehicles for a user",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "List of vehicles"),
-    @ApiResponse(responseCode = FORBIDDEN_STATUS, description = ACCESS_DENIED_MSG),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "List of vehicles",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                array = @ArraySchema(schema = @Schema(implementation = VehicleResponse.class)))),
+    @ApiResponse(
+        responseCode = FORBIDDEN_STATUS,
+        description = ACCESS_DENIED_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content)
   })
   public ResponseEntity<List<VehicleResponse>> getVehicles(
-      @PathVariable UUID userId, HttpServletRequest servletRequest) {
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur propriétaire",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              required = true)
+          @PathVariable
+          UUID userId,
+      HttpServletRequest servletRequest) {
     checkUserAccess(userId, servletRequest);
     return ResponseEntity.ok(userProfileService.getVehicles(userId));
   }
@@ -280,17 +400,43 @@ public class UserProfileController {
       description = "Associates a new license plate to the specified user",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = CREATED_STATUS, description = "Vehicle successfully added"),
-    @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = INVALID_PLATE_MSG),
-    @ApiResponse(responseCode = FORBIDDEN_STATUS, description = ACCESS_DENIED_MSG),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG),
+    @ApiResponse(
+        responseCode = CREATED_STATUS,
+        description = "Vehicle successfully added",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = VehicleResponse.class))),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = INVALID_PLATE_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = FORBIDDEN_STATUS,
+        description = ACCESS_DENIED_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = CONFLICT_STATUS,
-        description = "Vehicle license plate already registered for this user")
+        description = "Vehicle license plate already registered for this user",
+        content = @Content)
   })
   public ResponseEntity<VehicleResponse> addVehicle(
-      @PathVariable UUID userId,
-      @Valid @RequestBody VehicleRequest request,
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              required = true)
+          @PathVariable
+          UUID userId,
+      @Valid
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              description = "Informations sur le véhicule à ajouter",
+              required = true)
+          @RequestBody
+          VehicleRequest request,
       HttpServletRequest servletRequest) {
     checkUserAccess(userId, servletRequest);
     VehicleResponse response = userProfileService.addVehicle(userId, request);
@@ -304,18 +450,49 @@ public class UserProfileController {
       description = "Updates an existing license plate for the specified user",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "Vehicle successfully updated"),
-    @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = INVALID_PLATE_MSG),
-    @ApiResponse(responseCode = FORBIDDEN_STATUS, description = ACCESS_DENIED_MSG),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_OR_VEHICLE_NOT_FOUND_MSG),
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "Vehicle successfully updated",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = VehicleResponse.class))),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = INVALID_PLATE_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = FORBIDDEN_STATUS,
+        description = ACCESS_DENIED_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_OR_VEHICLE_NOT_FOUND_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = CONFLICT_STATUS,
-        description = "New vehicle license plate already registered for this user")
+        description = "New vehicle license plate already registered for this user",
+        content = @Content)
   })
   public ResponseEntity<VehicleResponse> updateVehicle(
-      @PathVariable UUID userId,
-      @PathVariable String vehicleId,
-      @Valid @RequestBody VehicleRequest request,
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              required = true)
+          @PathVariable
+          UUID userId,
+      @Parameter(
+              description = "Identifiant ou ancienne plaque d'immatriculation du véhicule",
+              example = "AA-123-BB",
+              required = true)
+          @PathVariable
+          String vehicleId,
+      @Valid
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              description = "Nouvelle immatriculation du véhicule",
+              required = true)
+          @RequestBody
+          VehicleRequest request,
       HttpServletRequest servletRequest) {
     checkUserAccess(userId, servletRequest);
     return ResponseEntity.ok(userProfileService.updateVehicle(userId, vehicleId, request));
@@ -327,13 +504,32 @@ public class UserProfileController {
       description = "Disassociates a vehicle from the specified user",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = NO_CONTENT_STATUS, description = "Vehicle successfully removed"),
-    @ApiResponse(responseCode = FORBIDDEN_STATUS, description = ACCESS_DENIED_MSG),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_OR_VEHICLE_NOT_FOUND_MSG)
+    @ApiResponse(
+        responseCode = NO_CONTENT_STATUS,
+        description = "Vehicle successfully removed",
+        content = @Content),
+    @ApiResponse(
+        responseCode = FORBIDDEN_STATUS,
+        description = ACCESS_DENIED_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_OR_VEHICLE_NOT_FOUND_MSG,
+        content = @Content)
   })
   public ResponseEntity<Void> removeVehicle(
-      @PathVariable UUID userId,
-      @PathVariable String vehicleId,
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+              required = true)
+          @PathVariable
+          UUID userId,
+      @Parameter(
+              description = "Identifiant ou plaque d'immatriculation du véhicule à supprimer",
+              example = "AA-123-BB",
+              required = true)
+          @PathVariable
+          String vehicleId,
       HttpServletRequest servletRequest) {
     checkUserAccess(userId, servletRequest);
     userProfileService.removeVehicle(userId, vehicleId);
@@ -346,16 +542,37 @@ public class UserProfileController {
       description = "Retrieves the list of registered vehicles for the authenticated client",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "List of vehicles"),
-    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "List of vehicles",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                array = @ArraySchema(schema = @Schema(implementation = VehicleResponse.class)))),
+    @ApiResponse(
+        responseCode = UNAUTHORIZED_STATUS,
+        description = UNAUTHORIZED_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
-        description = "Forbidden - Only clients can register vehicles"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG)
+        description = "Forbidden - Only clients can register vehicles",
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content)
   })
   public ResponseEntity<List<VehicleResponse>> getCurrentUserVehicles(
-      @RequestHeader(value = HEADER_USER_ID, required = false) String userIdHeader,
-      @RequestHeader(value = HEADER_USER_EMAIL, required = false) String userEmailHeader,
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+          @RequestHeader(value = HEADER_USER_ID, required = false)
+          String userIdHeader,
+      @Parameter(
+              description = "Adresse email de l'utilisateur",
+              example = "alice.dupont@example.com")
+          @RequestHeader(value = HEADER_USER_EMAIL, required = false)
+          String userEmailHeader,
       HttpServletRequest servletRequest) {
     String authUserId = resolveAuthId(userIdHeader, servletRequest);
     String authEmail = resolveAuthEmail(userEmailHeader, servletRequest);
@@ -368,21 +585,51 @@ public class UserProfileController {
       description = "Associates a new license plate to the authenticated client",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = CREATED_STATUS, description = "Vehicle successfully added"),
-    @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = INVALID_PLATE_MSG),
-    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
+    @ApiResponse(
+        responseCode = CREATED_STATUS,
+        description = "Vehicle successfully added",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = VehicleResponse.class))),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = INVALID_PLATE_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = UNAUTHORIZED_STATUS,
+        description = UNAUTHORIZED_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
-        description = "Forbidden - Only clients can register vehicles"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_NOT_FOUND_MSG),
+        description = "Forbidden - Only clients can register vehicles",
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_NOT_FOUND_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = CONFLICT_STATUS,
-        description = "Vehicle license plate already registered for this user")
+        description = "Vehicle license plate already registered for this user",
+        content = @Content)
   })
   public ResponseEntity<VehicleResponse> addCurrentUserVehicle(
-      @RequestHeader(value = HEADER_USER_ID, required = false) String userIdHeader,
-      @RequestHeader(value = HEADER_USER_EMAIL, required = false) String userEmailHeader,
-      @Valid @RequestBody VehicleRequest request,
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+          @RequestHeader(value = HEADER_USER_ID, required = false)
+          String userIdHeader,
+      @Parameter(
+              description = "Adresse email de l'utilisateur",
+              example = "alice.dupont@example.com")
+          @RequestHeader(value = HEADER_USER_EMAIL, required = false)
+          String userEmailHeader,
+      @Valid
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              description = "Informations sur le véhicule à enregistrer",
+              required = true)
+          @RequestBody
+          VehicleRequest request,
       HttpServletRequest servletRequest) {
     String authUserId = resolveAuthId(userIdHeader, servletRequest);
     String authEmail = resolveAuthEmail(userEmailHeader, servletRequest);
@@ -398,22 +645,57 @@ public class UserProfileController {
       description = "Updates an existing license plate for the authenticated client",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = OK_STATUS, description = "Vehicle successfully updated"),
-    @ApiResponse(responseCode = BAD_REQUEST_STATUS, description = INVALID_PLATE_MSG),
-    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
+    @ApiResponse(
+        responseCode = OK_STATUS,
+        description = "Vehicle successfully updated",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = VehicleResponse.class))),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = INVALID_PLATE_MSG,
+        content = @Content),
+    @ApiResponse(
+        responseCode = UNAUTHORIZED_STATUS,
+        description = UNAUTHORIZED_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
-        description = "Forbidden - Only clients can modify vehicles"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_OR_VEHICLE_NOT_FOUND_MSG),
+        description = "Forbidden - Only clients can modify vehicles",
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_OR_VEHICLE_NOT_FOUND_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = CONFLICT_STATUS,
-        description = "New vehicle license plate already registered for this user")
+        description = "New vehicle license plate already registered for this user",
+        content = @Content)
   })
   public ResponseEntity<VehicleResponse> updateCurrentUserVehicle(
-      @PathVariable String vehicleId,
-      @Valid @RequestBody VehicleRequest request,
-      @RequestHeader(value = HEADER_USER_ID, required = false) String userIdHeader,
-      @RequestHeader(value = HEADER_USER_EMAIL, required = false) String userEmailHeader,
+      @Parameter(
+              description = "Identifiant ou plaque d'immatriculation actuelle du véhicule",
+              example = "AA-123-BB",
+              required = true)
+          @PathVariable
+          String vehicleId,
+      @Valid
+          @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              description = "Nouvelle plaque d'immatriculation",
+              required = true)
+          @RequestBody
+          VehicleRequest request,
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+          @RequestHeader(value = HEADER_USER_ID, required = false)
+          String userIdHeader,
+      @Parameter(
+              description = "Adresse email de l'utilisateur",
+              example = "alice.dupont@example.com")
+          @RequestHeader(value = HEADER_USER_EMAIL, required = false)
+          String userEmailHeader,
       HttpServletRequest servletRequest) {
     String authUserId = resolveAuthId(userIdHeader, servletRequest);
     String authEmail = resolveAuthEmail(userEmailHeader, servletRequest);
@@ -427,17 +709,40 @@ public class UserProfileController {
       description = "Disassociates a vehicle from the authenticated client",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = NO_CONTENT_STATUS, description = "Vehicle successfully removed"),
-    @ApiResponse(responseCode = UNAUTHORIZED_STATUS, description = UNAUTHORIZED_MSG),
+    @ApiResponse(
+        responseCode = NO_CONTENT_STATUS,
+        description = "Vehicle successfully removed",
+        content = @Content),
+    @ApiResponse(
+        responseCode = UNAUTHORIZED_STATUS,
+        description = UNAUTHORIZED_MSG,
+        content = @Content),
     @ApiResponse(
         responseCode = FORBIDDEN_STATUS,
-        description = "Forbidden - Only clients can remove vehicles"),
-    @ApiResponse(responseCode = NOT_FOUND_STATUS, description = USER_OR_VEHICLE_NOT_FOUND_MSG)
+        description = "Forbidden - Only clients can remove vehicles",
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = USER_OR_VEHICLE_NOT_FOUND_MSG,
+        content = @Content)
   })
   public ResponseEntity<Void> removeCurrentUserVehicle(
-      @PathVariable String vehicleId,
-      @RequestHeader(value = HEADER_USER_ID, required = false) String userIdHeader,
-      @RequestHeader(value = HEADER_USER_EMAIL, required = false) String userEmailHeader,
+      @Parameter(
+              description = "Identifiant ou plaque d'immatriculation du véhicule à supprimer",
+              example = "AA-123-BB",
+              required = true)
+          @PathVariable
+          String vehicleId,
+      @Parameter(
+              description = "Identifiant UUID de l'utilisateur",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+          @RequestHeader(value = HEADER_USER_ID, required = false)
+          String userIdHeader,
+      @Parameter(
+              description = "Adresse email de l'utilisateur",
+              example = "alice.dupont@example.com")
+          @RequestHeader(value = HEADER_USER_EMAIL, required = false)
+          String userEmailHeader,
       HttpServletRequest servletRequest) {
     String authUserId = resolveAuthId(userIdHeader, servletRequest);
     String authEmail = resolveAuthEmail(userEmailHeader, servletRequest);
