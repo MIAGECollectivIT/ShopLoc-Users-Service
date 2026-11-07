@@ -33,8 +33,9 @@ User management microservice for the ShopLoc project (MIAGE Collectiv'IT).
 - **Spring Boot Starter Data JPA**: Object-Relational Mapping (Hibernate) and Spring Data repositories.
 - **PostgreSQL JDBC Driver**: Relational database driver for production and containerized environments.
 - **Spring Security Crypto**: BCrypt password hashing (work factor 12) with automated per-password salting.
+- **JWT & Cryptographie RSA RS256**: JSON Web Tokens signés asymétriquement (JJWT) avec découverte JWKS RFC 7517 et révocation de jetons.
 - **Spring Boot Starter Validation**: Server-side Bean Validation with Hibernate Validator.
-- **Springdoc OpenAPI (Swagger UI)**: OpenAPI 3 interactive documentation (`/swagger-ui.html`) with JWT Bearer authentication support.
+- **Springdoc OpenAPI (Swagger UI)**: OpenAPI 3 interactive documentation (`/swagger-ui/index.html`) avec exemples de requêtes pré-remplis, support multi-serveurs (`/` direct et `/api` gateway) et authentification JWT Bearer.
 - **Project Lombok**: Reduces boilerplate code (getters, setters, builders, constructors) via annotation processing.
 - **H2 Database (Test scope)**: In-memory database with PostgreSQL compatibility mode for automated unit and integration tests.
 - **Spring Boot Starter Test & Testing Suite**:
@@ -59,7 +60,8 @@ The file defines customizable environment variables for local Docker Compose and
 - `DB_HOST`, `DB_PORT`: PostgreSQL connection host and port (`db` for Docker Compose, `localhost` for local IDE)
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`: PostgreSQL container credentials
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Spring Boot datasource configuration
-- `JWT_SECRET`: Secret key for JWT Bearer token authentication
+- `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`: Clés asymétriques RSA (format PEM / PKCS#8 et X.509 Base64) pour la signature et la vérification des JWT
+- `JWT_KEY_ID`: Identifiant du Key ID pour le standard JWKS (défaut `shoploc-key-1`)
 
 > In production (K3s cluster), secrets are provided directly by Kubernetes Secrets (`db-credentials-users`).
 
@@ -132,38 +134,89 @@ docker run -p 8080:8080 users-service
 
 ### 4.1 Interactive Documentation (Swagger UI)
 Once the service is started, access interactive OpenAPI documentation at:
-- **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) (or `http://localhost:8080/swagger-ui.html`)
+- **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) (ou [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html))
 - **OpenAPI JSON specification**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+
+> [!NOTE]
+> **Port Configuration:** If you launch all of ShopLoc microservices together like the ingress does, the port might not be `8080`. You might need to check your environment / ingress configuration to access Swagger (the default multi-service configuration uses port `8081`, e.g. `http://localhost:8081/swagger-ui/index.html`).
+
+#### Serveurs disponibles dans Swagger UI
+Dans le menu déroulant **Servers** en haut de la page Swagger UI, vous pouvez choisir la cible d'exécution :
+1. **`Direct / Local (Défaut)` (`/`)** : sélectionné par défaut, envoie les requêtes directement vers le service en local (ex: `http://localhost:8080/v1/...`).
+2. **`Traefik API Gateway (WAN)` (`/api`)** : simule les appels transitant par la passerelle Traefik (ex: `/api/v1/...`).
+
+#### Exemples de requêtes pré-remplis
+Toutes les routes disposent d'exemples de requêtes pré-remplis avec des données réalistes :
+- `LoginRequest` : email valide et mot de passe conforme à la politique CNIL.
+- `UserRegistrationRequest` : identité, date de naissance (> 18 ans), plaque au format français SIV (`AA-123-BB`) et lieu de retrait.
+- `VehicleRequest` : validation de plaque d'immatriculation française.
+- `UserStoreLinkRequest` : identifiants numériques de partenaire et de commerce.
+
+#### Comment s'authentifier dans Swagger UI
+Pour tester les routes protégées directement depuis l'interface :
+1. Ouvrez l'opération publique `POST /v1/users/login`.
+2. Cliquez sur **Try it out** et exécutez la requête avec les identifiants de test pré-remplis (ou l'un des comptes par défaut : `alice.client@example.com` / `ClientPass123!`, `bob.merchant@example.com` / `MerchantPass123!`, `admin@example.com` / `AdminPass123!`).
+3. Copiez la valeur du champ `token` dans la réponse JSON.
+4. Cliquez sur le bouton **Authorize** (cadenas vert en haut à droite de la page) et collez votre jeton JWT (le préfixe `Bearer` est géré automatiquement).
+5. Vous pouvez désormais tester l'ensemble des routes sécurisées (`/me`, `/me/vehicles`, etc.).
 
 ### 4.2 Authentication in application.yaml
 Authentication is configured centrally in `application.yaml` under `application.security`:
 ```yaml
 application:
   security:
+    registration-enabled: ${REGISTRATION_ENABLED:false}
     auth-type: "Bearer JWT"
     jwt:
       header-name: "Authorization"
       token-prefix: "Bearer "
-      secret-key: "${JWT_SECRET:dGhpc2lzYXZlcnlzZWNyZXRqd3R1c2Vyc3NlcnZpY2VrZXkxMjM0NTY=}"
+      private-key: "${JWT_PRIVATE_KEY:}"
+      public-key: "${JWT_PUBLIC_KEY:}"
+      key-id: "${JWT_KEY_ID:shoploc-key-1}"
       issuer: "shoploc-auth-service"
-      expiration-ms: 86400000
+      expiration-ms: 7200000
+    lockout:
+      max-attempts: ${SECURITY_MAX_LOGIN_ATTEMPTS:5}
+      lockout-minutes: ${SECURITY_LOCKOUT_MINUTES:15}
     description: "Authenticate using a JWT Bearer token."
 ```
-In Swagger UI, click the **Authorize** button (padlock icon) to input your JWT token for protected endpoints.
 
 ### 4.3 Endpoints Overview
 
-| Method | Endpoint | Service | Auth Required | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/v1/users` | `AuthenticationService` | No | Register a new client user (password hashed via BCrypt, 7-char client code generated) |
-| `GET` | `/v1/users/{userId}` | `UserProfileService` | Yes (Bearer) | Retrieve user profile by public UUID |
-| `PUT` | `/v1/users/{userId}` | `UserProfileService` | Yes (Bearer) | Update user profile personal information |
-| `DELETE` | `/v1/users/{userId}` | `UserProfileService` | Yes (Bearer) | Delete user profile |
-| `GET` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Yes (Bearer) | Get registered vehicles / license plates |
-| `POST` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Yes (Bearer) | Add a vehicle license plate |
-| `DELETE` | `/v1/users/{userId}/vehicles/{vehicleId}` | `UserProfileService` | Yes (Bearer) | Remove a vehicle license plate |
-| `GET` | `/v1/users/loyalty-cards/{cardNumber}` | `LoyaltyCardIdentificationService` | Yes (Bearer) | Identify customer by loyalty card number / client code |
-| `GET` | `/v1/users/status` | `UsersStatusController` | Yes (Bearer) | Service health and operational status |
+Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) et sur le chemin passerelle (`/api/v1/...`).
+
+| Méthode | Endpoint | Service | Auth Requise | Rôle | Description |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Authentification & Session** | | | | | |
+| `POST` | `/v1/users` | `AuthenticationService` | Non | Public | Inscription d'un nouveau client (désactivée en prod, HTTP 403) |
+| `POST` | `/v1/users/login` | `AuthenticationService` | Non | Public | Connexion utilisateur, émission du jeton JWT Bearer |
+| `POST` | `/v1/users/logout` | `TokenRevocationService` | Oui (Bearer) | Tous | Déconnexion et révocation du JTI du jeton JWT |
+| **Profils Utilisateurs** | | | | | |
+| `GET` | `/v1/users/me` | `UserProfileService` | Oui (Bearer) | Tous | Consultation du profil de l'utilisateur connecté |
+| `GET` | `/v1/users/{userId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Consultation d'un profil par UUID public ou ID numérique |
+| `PUT` | `/v1/users/{userId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Mise à jour des informations personnelles du profil |
+| `DELETE` | `/v1/users/{userId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Suppression d'un compte utilisateur |
+| `GET` | `/v1/users/partners` | `UserProfileService` | Non | Public | Liste des commerçants partenaires pour rattachement |
+| `POST` | `/v1/users/stores` | `UserProfileService` | Oui (Bearer) | MERCHANT / ADMIN | Rattachement d'un magasin à un commerçant partenaire |
+| **Gestion des Véhicules & Plaques** | | | | | |
+| `GET` | `/v1/users/me/vehicles` | `UserProfileService` | Oui (Bearer) | CLIENT | Liste des véhicules du client connecté |
+| `POST` | `/v1/users/me/vehicles` | `UserProfileService` | Oui (Bearer) | CLIENT | Ajout d'une plaque d'immatriculation pour le client connecté |
+| `PUT` | `/v1/users/me/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | CLIENT | Modification d'une plaque d'immatriculation client |
+| `DELETE` | `/v1/users/me/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | CLIENT | Suppression d'une plaque d'immatriculation client |
+| `GET` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Liste des véhicules d'un utilisateur par son ID |
+| `POST` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Ajout d'un véhicule pour un utilisateur |
+| `PUT` | `/v1/users/{userId}/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Modification d'un véhicule d'un utilisateur |
+| `DELETE` | `/v1/users/{userId}/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Suppression d'un véhicule d'un utilisateur |
+| **Carte de Fidélité & Santé** | | | | | |
+| `GET` | `/v1/users/loyalty-cards/{cardNumber}` | `LoyaltyCardIdentificationService` | Oui (Bearer) | Tous | Identification d'un client par son numéro de carte de fidélité |
+| `GET` | `/v1/users/status` | `UsersStatusController` | Non | Public | État de santé opérationnel du microservice (`UP`) |
+| **Cryptographie & Découverte Gateway** | | | | | |
+| `GET` | `/.well-known/jwks.json` | `JwtTokenService` | Non | Public | Découverte JWKS standard RFC 7517 (racine de domaine) |
+| `GET` | `/v1/auth/jwks.json` | `JwtTokenService` | Non | Public | Découverte JWKS sous le préfixe `/v1/auth` |
+| `GET` | `/v1/auth/public-key` | `JwtTokenService` | Non | Public | Clé publique RSA (X.509 SPKI Base64) pour vérification JWT |
+| `GET` | `/v1/auth/revoked-tokens` | `TokenRevocationService` | Non | Public | Liste des JTIs des jetons révoqués (synchro de caches) |
+| `GET` | `/v1/auth/check-revocation` | `TokenRevocationService` | Non | Public | Vérification de révocation d'un JTI spécifique |
+| `GET` | `/v1/auth/verify` | `JwtAuthInterceptor` | Oui (Bearer/Cookie)| Tous | Endpoint ForwardAuth retournant les headers d'identité |
 
 ## 5. Project structure
 ```
@@ -183,48 +236,75 @@ In Swagger UI, click the **Authorize** button (padlock icon) to input your JWT t
 │   │   ├── java/                # Java Spring Boot source code
 │   │   │   └── fr/miage/collectivit/usersservice/
 │   │   │       ├── config/
-│   │   │       │   ├── OpenApiConfig.java          # Swagger & OpenAPI authentication setup
-│   │   │       │   └── SecurityConfig.java         # BCrypt PasswordEncoder configuration
+│   │   │       │   ├── OpenApiConfig.java          # Swagger & OpenAPI authentication setup, customizer
+│   │   │       │   ├── SecurityConfig.java         # BCrypt PasswordEncoder configuration
+│   │   │       │   └── WebMvcConfig.java           # CORS & Interceptor exclusions
 │   │   │       ├── controller/
-│   │   │       │   ├── AuthenticationController.java   # POST /v1/users
-│   │   │       │   ├── LoyaltyCardController.java      # GET /v1/users/loyalty-cards/{cardNumber}
+│   │   │       │   ├── AuthenticationController.java   # Auth, Login, Logout, Public Keys, Revocation
+│   │   │       │   ├── JwksDiscoveryController.java    # RFC 7517 root discovery endpoint
+│   │   │       │   ├── LoyaltyCardController.java      # Customer loyalty card identification
 │   │   │       │   ├── UserProfileController.java      # /v1/users/{userId} & vehicles
 │   │   │       │   └── UsersStatusController.java      # GET /v1/users/status
 │   │   │       ├── dto/
+│   │   │       │   ├── AuthResponse.java
+│   │   │       │   ├── LoginRequest.java
+│   │   │       │   ├── PartnerResponse.java
 │   │   │       │   ├── UserRegistrationRequest.java
 │   │   │       │   ├── UserResponse.java
+│   │   │       │   ├── UserStoreLinkRequest.java
 │   │   │       │   ├── UserUpdateRequest.java
 │   │   │       │   ├── VehicleRequest.java
 │   │   │       │   └── VehicleResponse.java
 │   │   │       ├── entity/
-│   │   │       │   ├── User.java                   # JPA entity with PostgreSQL ARRAY mapping
-│   │   │       │   └── UserRole.java
+│   │   │       │   ├── Admin.java                  # Polymorphic admin entity
+│   │   │       │   ├── Client.java                 # Client entity with license plates & client code
+│   │   │       │   ├── Merchant.java               # Merchant partner entity
+│   │   │       │   ├── RevokedToken.java           # Revoked JWT tracking entity
+│   │   │       │   ├── User.java                   # JPA base entity with inheritance mapping
+│   │   │       │   ├── UserRole.java
+│   │   │       │   └── UserStore.java              # Merchant-to-store relationship
 │   │   │       ├── exception/
+│   │   │       │   ├── AccountLockedException.java
 │   │   │       │   ├── EmailAlreadyExistsException.java
+│   │   │       │   ├── ForbiddenException.java
 │   │   │       │   ├── GlobalExceptionHandler.java # ProblemDetail RFC 7807 handler
+│   │   │       │   ├── UnauthorizedException.java
 │   │   │       │   ├── UserNotFoundException.java
 │   │   │       │   ├── VehicleAlreadyExistsException.java
 │   │   │       │   └── VehicleNotFoundException.java
 │   │   │       ├── repository/
-│   │   │       │   └── UserRepository.java         # Spring Data JPA repository
+│   │   │       │   ├── ClientRepository.java
+│   │   │       │   ├── RevokedTokenRepository.java
+│   │   │       │   ├── UserRepository.java
+│   │   │       │   └── UserStoreRepository.java
+│   │   │       ├── security/
+│   │   │       │   ├── JwtAuthInterceptor.java     # Route protection & identity resolution
+│   │   │       │   └── JwtTokenService.java        # RSA RS256 token provider & JWKS generator
 │   │   │       ├── service/
 │   │   │       │   ├── AuthenticationService.java
 │   │   │       │   ├── LoyaltyCardIdentificationService.java
+│   │   │       │   ├── TokenRevocationService.java
 │   │   │       │   ├── UserProfileService.java
 │   │   │       │   └── impl/
 │   │   │       │       ├── AuthenticationServiceImpl.java
 │   │   │       │       ├── LoyaltyCardIdentificationServiceImpl.java
+│   │   │       │       ├── TokenRevocationServiceImpl.java
+│   │   │       │       ├── UserIdentityResolver.java
 │   │   │       │       └── UserProfileServiceImpl.java
 │   │   │       ├── util/
-│   │   │       │   └── ClientCodeGenerator.java    # Base62 7-character code generator
+│   │   │       │   ├── ClientCodeGenerator.java    # Base62 7-character code generator
+│   │   │       │   └── PasswordHashGenerator.java  # Dev hashing utility
 │   │   │       ├── validation/
 │   │   │       │   ├── FrenchLicensePlate.java          # French license plate validation annotation
 │   │   │       │   ├── FrenchLicensePlateValidator.java # SIV/FNI format validator & normalizer
 │   │   │       │   ├── MinAge.java                      # Minimum age validation annotation
-│   │   │       │   └── MinAgeValidator.java             # Bean Validation constraint validator
+│   │   │       │   ├── MinAgeValidator.java             # Bean Validation constraint validator
+│   │   │       │   ├── ValidPassword.java               # CNIL password complexity annotation
+│   │   │       │   └── ValidPasswordValidator.java
 │   │   │       └── UsersServiceApplication.java    # Application entrypoint
 │   │   └── resources/
-│   │       └── application.yaml                    # Application, datasource & security configuration
+│   │       ├── application.yaml                    # Application, datasource & security configuration
+│   │       └── db/migration/                       # Flyway migration scripts
 │   └── test/
 │       ├── java/                # Unit & integration tests
 │       │   └── fr/miage/collectivit/usersservice/
@@ -233,20 +313,26 @@ In Swagger UI, click the **Authorize** button (padlock icon) to input your JWT t
 │       │       ├── controller/
 │       │       │   ├── AuthenticationControllerTest.java
 │       │       │   ├── LoyaltyCardControllerTest.java
+│       │       │   ├── OpenApiIntegrationTest.java      # Swagger UI & OpenAPI validation
 │       │       │   ├── UserPasswordSecurityIntegrationTest.java
 │       │       │   ├── UserProfileControllerTest.java
 │       │       │   └── UsersStatusControllerTest.java
 │       │       ├── repository/
 │       │       │   └── UserRepositoryTest.java
+│       │       ├── security/
+│       │       │   ├── JwtTokenServiceTest.java
+│       │       │   └── UserSecurityIntegrationTest.java
 │       │       ├── service/
 │       │       │   ├── AuthenticationServiceTest.java
 │       │       │   ├── LoyaltyCardIdentificationServiceTest.java
 │       │       │   └── UserProfileServiceTest.java
 │       │       ├── util/
-│       │       │   └── ClientCodeGeneratorTest.java
+│       │       │   ├── ClientCodeGeneratorTest.java
+│       │       │   └── PasswordHashGeneratorTest.java
 │       │       ├── validation/
 │       │       │   ├── FrenchLicensePlateValidatorTest.java
-│       │       │   └── MinAgeValidatorTest.java
+│       │       │   ├── MinAgeValidatorTest.java
+│       │       │   └── ValidPasswordValidatorTest.java
 │       │       └── UsersServiceApplicationTests.java
 │       └── resources/
 │           └── application.yaml                    # H2 in-memory test configuration

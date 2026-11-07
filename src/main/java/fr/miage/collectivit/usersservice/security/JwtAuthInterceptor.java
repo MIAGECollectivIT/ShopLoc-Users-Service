@@ -49,6 +49,7 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
           "/error");
   private static final String DOCS_PREFIX = "/v3/api-docs";
   private static final String SWAGGER_PREFIX = "/swagger-ui";
+  private static final String WEBJARS_PREFIX = "/webjars";
 
   private final JwtTokenService jwtTokenService;
 
@@ -125,12 +126,15 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
   }
 
   private boolean isWhitelisted(String path, String method) {
-    if (METHOD_POST.equals(method) && PUBLIC_POST_PATHS.contains(path)) {
+    String normalizedPath = path.startsWith("/api/") ? path.substring(4) : path;
+    if (METHOD_POST.equals(method) && PUBLIC_POST_PATHS.contains(normalizedPath)) {
       return true;
     }
-    if (PUBLIC_EXACT_PATHS.contains(path)) {
+    if (PUBLIC_EXACT_PATHS.contains(normalizedPath)) {
       return true;
     }
-    return path.startsWith(DOCS_PREFIX) || path.startsWith(SWAGGER_PREFIX);
+    return normalizedPath.startsWith(DOCS_PREFIX)
+        || normalizedPath.startsWith(SWAGGER_PREFIX)
+        || normalizedPath.startsWith(WEBJARS_PREFIX);
   }
 }

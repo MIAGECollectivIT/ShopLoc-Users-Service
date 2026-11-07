@@ -28,10 +28,14 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
-  operationsSorter: method
-  tagsSorter: alpha
-  tryItOutEnabled: true
-  persistAuthorization: true
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    persistAuthorization: true
+    default-model-rendering: example
+  paths-to-match:
+    - /v1/**
+    - /.well-known/**
 
 # Application configuration including OpenAPI extensions and Authentication
 application:

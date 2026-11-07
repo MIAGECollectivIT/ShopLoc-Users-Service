@@ -4,6 +4,9 @@ import fr.miage.collectivit.usersservice.config.OpenApiConfig;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.service.LoyaltyCardIdentificationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -16,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/v1/users")
+@RequestMapping({"/v1/users", "/api/v1/users"})
 @RequiredArgsConstructor
 @Tag(
     name = "Loyalty Card",
@@ -31,10 +34,22 @@ public class LoyaltyCardController {
       description = "Finds user profile matching the given loyalty card number",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "User profile found"),
-    @ApiResponse(responseCode = "404", description = "Card number not found")
+    @ApiResponse(
+        responseCode = "200",
+        description = "User profile found",
+        content =
+            @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = UserResponse.class))),
+    @ApiResponse(responseCode = "404", description = "Card number not found", content = @Content)
   })
-  public ResponseEntity<UserResponse> identifyByCardNumber(@PathVariable String cardNumber) {
+  public ResponseEntity<UserResponse> identifyByCardNumber(
+      @Parameter(
+              description = "Numéro de carte de fidélité ou code client à 7 caractères",
+              example = "CL12345",
+              required = true)
+          @PathVariable
+          String cardNumber) {
     return ResponseEntity.ok(loyaltyCardIdentificationService.identifyByCardNumber(cardNumber));
   }
 }
