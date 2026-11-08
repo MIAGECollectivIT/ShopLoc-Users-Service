@@ -142,4 +142,3 @@ class AdminPartnerServiceTest {
     verify(userStoreRepository, never()).save(any(UserStore.class));
   }
 }
-
