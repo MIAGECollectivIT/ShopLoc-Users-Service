@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.miage.collectivit.usersservice.dto.AdminAddStoreRequest;
 import fr.miage.collectivit.usersservice.dto.LoginRequest;
 import fr.miage.collectivit.usersservice.dto.UserRegistrationRequest;
 import fr.miage.collectivit.usersservice.dto.UserStoreLinkRequest;
@@ -489,5 +490,84 @@ class UserSecurityIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("VALID"))
         .andExpect(jsonPath("$.role").value("CLIENT"));
+  }
+
+  @Test
+  @DisplayName("GET /v1/admin/partners returns 401 without token")
+  void shouldDenyAdminPartnersWithoutToken() throws Exception {
+    mockMvc.perform(get("/v1/admin/partners")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @DisplayName("GET /v1/admin/partners returns 403 with non-admin token")
+  void shouldDenyAdminPartnersForNonAdmin() throws Exception {
+    Client user =
+        Client.builder()
+            .firstName("Client")
+            .lastName("User")
+            .birthDate(LocalDate.of(1993, 3, 3))
+            .email("client.partnercheck@example.com")
+            .passwordHash(passwordEncoder.encode("Pass123!"))
+            .clientCode("CL55667")
+            .build();
+    User saved = userRepository.saveAndFlush(user);
+    String token = jwtTokenService.generateToken(saved);
+
+    mockMvc
+        .perform(get("/v1/admin/partners").header("Authorization", "Bearer " + token))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("Admin partner operations succeed with admin token")
+  void shouldAllowAdminToManagePartners() throws Exception {
+    Admin admin =
+        Admin.builder()
+            .firstName("Super")
+            .lastName("Admin")
+            .birthDate(LocalDate.of(1985, 5, 5))
+            .email("super.admin.partners@example.com")
+            .passwordHash(passwordEncoder.encode("SecretPass1!"))
+            .build();
+    User savedAdmin = userRepository.saveAndFlush(admin);
+    String adminToken = jwtTokenService.generateToken(savedAdmin);
+
+    Merchant merchant =
+        Merchant.builder()
+            .firstName("Benoit")
+            .lastName("Boulanger")
+            .birthDate(LocalDate.of(1980, 8, 8))
+            .email("benoit.partner@example.com")
+            .passwordHash(passwordEncoder.encode("SecretPass1!"))
+            .build();
+    User savedMerchant = userRepository.saveAndFlush(merchant);
+
+    mockMvc
+        .perform(get("/v1/admin/partners").header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray());
+
+    mockMvc
+        .perform(
+            get("/v1/admin/partners/" + savedMerchant.getId())
+                .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("benoit.partner@example.com"));
+
+    AdminAddStoreRequest addStoreRequest = new AdminAddStoreRequest(99L);
+    mockMvc
+        .perform(
+            post("/v1/admin/partners/" + savedMerchant.getId() + "/stores")
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(addStoreRequest)))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            get("/v1/admin/partners/" + savedMerchant.getId())
+                .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.storeIds[0]").value(99));
   }
 }
