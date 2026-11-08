@@ -198,6 +198,11 @@ Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) e
 | `DELETE` | `/v1/users/{userId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Suppression d'un compte utilisateur |
 | `GET` | `/v1/users/partners` | `UserProfileService` | Non | Public | Liste des commerçants partenaires pour rattachement |
 | `POST` | `/v1/users/stores` | `UserProfileService` | Oui (Bearer) | MERCHANT / ADMIN | Rattachement d'un magasin à un commerçant partenaire |
+| **Administration des Partenaires (Admin)** | | | | | |
+| `GET` | `/v1/admin/partners` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Liste des comptes partenaires avec filtrage optionnel (query, limit) |
+| `GET` | `/v1/admin/partners/{id}` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Fiche complète détaillée d'un partenaire avec ses boutiques associées |
+| `PUT` | `/v1/admin/partners/{id}` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Mise à jour des informations administratives d'un partenaire |
+| `POST` | `/v1/admin/partners/{id}/stores` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Rattachement d'une boutique existante à un compte partenaire |
 | **Gestion des Véhicules & Plaques** | | | | | |
 | `GET` | `/v1/users/me/vehicles` | `UserProfileService` | Oui (Bearer) | CLIENT | Liste des véhicules du client connecté |
 | `POST` | `/v1/users/me/vehicles` | `UserProfileService` | Oui (Bearer) | CLIENT | Ajout d'une plaque d'immatriculation pour le client connecté |
@@ -240,14 +245,18 @@ Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) e
 │   │   │       │   ├── SecurityConfig.java         # BCrypt PasswordEncoder configuration
 │   │   │       │   └── WebMvcConfig.java           # CORS & Interceptor exclusions
 │   │   │       ├── controller/
+│   │   │       │   ├── AdminPartnerController.java     # /v1/admin/partners admin operations
 │   │   │       │   ├── AuthenticationController.java   # Auth, Login, Logout, Public Keys, Revocation
 │   │   │       │   ├── JwksDiscoveryController.java    # RFC 7517 root discovery endpoint
 │   │   │       │   ├── LoyaltyCardController.java      # Customer loyalty card identification
 │   │   │       │   ├── UserProfileController.java      # /v1/users/{userId} & vehicles
 │   │   │       │   └── UsersStatusController.java      # GET /v1/users/status
 │   │   │       ├── dto/
+│   │   │       │   ├── AdminAddStoreRequest.java
+│   │   │       │   ├── AdminPartnerUpdateRequest.java
 │   │   │       │   ├── AuthResponse.java
 │   │   │       │   ├── LoginRequest.java
+│   │   │       │   ├── PartnerDetailResponse.java
 │   │   │       │   ├── PartnerResponse.java
 │   │   │       │   ├── UserRegistrationRequest.java
 │   │   │       │   ├── UserResponse.java
@@ -281,11 +290,13 @@ Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) e
 │   │   │       │   ├── JwtAuthInterceptor.java     # Route protection & identity resolution
 │   │   │       │   └── JwtTokenService.java        # RSA RS256 token provider & JWKS generator
 │   │   │       ├── service/
+│   │   │       │   ├── AdminPartnerService.java
 │   │   │       │   ├── AuthenticationService.java
 │   │   │       │   ├── LoyaltyCardIdentificationService.java
 │   │   │       │   ├── TokenRevocationService.java
 │   │   │       │   ├── UserProfileService.java
 │   │   │       │   └── impl/
+│   │   │       │       ├── AdminPartnerServiceImpl.java
 │   │   │       │       ├── AuthenticationServiceImpl.java
 │   │   │       │       ├── LoyaltyCardIdentificationServiceImpl.java
 │   │   │       │       ├── TokenRevocationServiceImpl.java
