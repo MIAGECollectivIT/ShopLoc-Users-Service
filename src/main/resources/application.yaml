@@ -1,9 +1,26 @@
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: users-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:app_db}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:devuser}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:devpassword}}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration${FLYWAY_ADDITIONAL_LOCATIONS:}
 
 springdoc:
   api-docs:
@@ -16,6 +33,10 @@ springdoc:
     tagsSorter: alpha
     tryItOutEnabled: true
     persistAuthorization: true
+    default-model-rendering: example
+  paths-to-match:
+    - /v1/**
+    - /.well-known/**
 
 # Application configuration including OpenAPI extensions and Authentication
 application:
@@ -35,11 +56,23 @@ application:
       x-service-environment: "${ENVIRONMENT:development}"
       x-service-name: "users-service"
   security:
+    # ==============================================================================
+    # SECURITY / WARNING: DO NOT MODIFY THIS VALUE!
+    # Public user registration is intentionally disabled to protect the platform
+    # against brute-force attacks and bots.
+    # All authorized users must be provisioned via SQL migrations.
+    # ==============================================================================
+    registration-enabled: ${REGISTRATION_ENABLED:false}
     auth-type: "Bearer JWT"
     jwt:
       header-name: "Authorization"
       token-prefix: "Bearer "
-      secret-key: "${JWT_SECRET:dGhpc2lzYXZlcnlzZWNyZXRqd3R1c2Vyc3NlcnZpY2VrZXkxMjM0NTY=}"
+      private-key: "${JWT_PRIVATE_KEY:}"
+      public-key: "${JWT_PUBLIC_KEY:}"
+      key-id: "${JWT_KEY_ID:shoploc-key-1}"
       issuer: "shoploc-auth-service"
-      expiration-ms: 86400000
+      expiration-ms: 7200000
+    lockout:
+      max-attempts: ${SECURITY_MAX_LOGIN_ATTEMPTS:5}
+      lockout-minutes: ${SECURITY_LOCKOUT_MINUTES:15}
     description: "Authenticate using a JWT Bearer token. Enter your token prefixed with 'Bearer ' or simply the token value."

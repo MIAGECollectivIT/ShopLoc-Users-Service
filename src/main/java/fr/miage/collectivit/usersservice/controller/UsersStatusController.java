@@ -1,10 +1,10 @@
 package fr.miage.collectivit.usersservice.controller;
 
-import fr.miage.collectivit.usersservice.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Controller exposing users service status and health information with OpenAPI documentation. */
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping({"/v1/users", "/api/v1/users"})
 @Tag(name = "Users Status", description = "Operations related to users service status")
 public class UsersStatusController {
 
@@ -22,10 +22,19 @@ public class UsersStatusController {
   @Operation(
       summary = "Check service status",
       description = "Returns the current running status of the users service",
-      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
+      security = {})
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "200", description = "Service is active and operational")
+        @ApiResponse(
+            responseCode = "200",
+            description = "Service is active and operational",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    examples =
+                        @ExampleObject(
+                            name = "StatusResponseExample",
+                            value = "{\"service\": \"users-service\", \"status\": \"UP\"}")))
       })
   public ResponseEntity<Map<String, String>> getStatus() {
     return ResponseEntity.ok(Map.of("service", "users-service", "status", "UP"));

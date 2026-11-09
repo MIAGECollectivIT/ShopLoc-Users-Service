@@ -7,7 +7,10 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+import java.util.List;
 import java.util.Map;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -70,6 +73,10 @@ public class OpenApiConfig {
             "x-auth-type", authType);
 
     return new OpenAPI()
+        .servers(
+            List.of(
+                new Server().url("/").description("Direct / Local (Default)"),
+                new Server().url("/api").description("Traefik API Gateway (WAN)")))
         .info(
             new Info()
                 .title(title)
@@ -89,5 +96,16 @@ public class OpenApiConfig {
                         .scheme("bearer")
                         .bearerFormat("JWT")
                         .description(securityDescription)));
+  }
+
+  @Bean
+  public OpenApiCustomizer removeDuplicateApiPrefixPaths() {
+    return openApi -> {
+      if (openApi.getPaths() != null) {
+        List<String> toRemove =
+            openApi.getPaths().keySet().stream().filter(path -> path.startsWith("/api/")).toList();
+        toRemove.forEach(openApi.getPaths()::remove);
+      }
+    };
   }
 }
