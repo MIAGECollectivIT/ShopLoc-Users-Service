@@ -23,7 +23,7 @@ import java.lang.annotation.Target;
 public @interface ValidPassword {
 
   String message() default
-      "Le mot de passe doit comporter au moins 12 caractères et inclure au moins une lettre majuscule, une lettre minuscule, un chiffre et un caractère spécial (recommandations CNIL).";
+      "Password must be at least 12 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character (CNIL recommendation).";
 
   Class<?>[] groups() default {};
 

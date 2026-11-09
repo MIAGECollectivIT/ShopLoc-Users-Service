@@ -69,18 +69,17 @@ public class UserProfileServiceImpl implements UserProfileService {
       return;
     }
     if (!userRepository.existsById(userId)) {
-      throw new UserNotFoundException("Utilisateur non trouvé avec l'identifiant : " + userId);
+      throw new UserNotFoundException("User not found with id: " + userId);
     }
     if (userStoreRepository.existsByUserIdAndStoreId(userId, storeId)) {
       if (log.isDebugEnabled()) {
-        log.debug("Liaison déjà existante pour userId={} et storeId={}", userId, storeId);
+        log.debug("Link already exists for userId={} and storeId={}", userId, storeId);
       }
       return;
     }
     UserStore link = UserStore.builder().userId(userId).storeId(storeId).build();
     userStoreRepository.save(link);
-    log.info(
-        "Liaison enregistrée entre l'utilisateur id={} et le commerce storeId={}", userId, storeId);
+    log.info("Link recorded between user id={} and store storeId={}", userId, storeId);
   }
 
   @Override
@@ -169,7 +168,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     if (user instanceof Client client) {
       return client;
     }
-    throw new ForbiddenException("Seuls les clients peuvent gérer les véhicules.");
+    throw new ForbiddenException("Only clients can manage vehicles.");
   }
 
   private void validateNewPlateNotDuplicate(List<String> plates, String oldPlate, String newPlate) {

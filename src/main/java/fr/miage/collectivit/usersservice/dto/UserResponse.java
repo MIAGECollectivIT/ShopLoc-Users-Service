@@ -12,39 +12,32 @@ import java.util.UUID;
 import lombok.Builder;
 
 @Builder
-@Schema(description = "Représentation détaillée d'un profil utilisateur ShopLoc")
+@Schema(description = "Detailed representation of a ShopLoc user profile")
 public record UserResponse(
     @Schema(
-            description = "Identifiant UUID public de l'utilisateur",
+            description = "Public UUID identifier of the user",
             example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
         UUID id,
-    @Schema(description = "Adresse email de l'utilisateur", example = "alice.dupont@example.com")
-        String email,
-    @Schema(description = "Rôle de l'utilisateur dans la plateforme", example = "CLIENT")
-        UserRole role,
-    @Schema(description = "Prénom", example = "Alice") String firstName,
-    @Schema(description = "Nom de famille", example = "Dupont") String lastName,
-    @Schema(description = "Date de naissance au format ISO", example = "1995-04-20")
-        LocalDate birthDate,
+    @Schema(description = "User email address", example = "alice.dupont@example.com") String email,
+    @Schema(description = "User role on the platform", example = "CLIENT") UserRole role,
+    @Schema(description = "First name", example = "Alice") String firstName,
+    @Schema(description = "Last name", example = "Dupont") String lastName,
+    @Schema(description = "ISO-formatted birth date", example = "1995-04-20") LocalDate birthDate,
     @Schema(
-            description = "Code client unique à 7 caractères (présent pour les clients)",
+            description = "Unique 7-character client code (present for clients)",
             example = "CL12345")
         String clientCode,
     @Schema(
-            description = "Lieu de retrait choisi pour la carte de fidélité physique",
+            description = "Pickup location selected for the physical loyalty card",
             example = "Mairie de Lille")
         String pickupLocation,
     @ArraySchema(
             schema =
-                @Schema(
-                    description = "Plaque d'immatriculation enregistrée",
-                    example = "AA-123-BB"))
+                @Schema(description = "Registered vehicle license plate", example = "AA-123-BB"))
         List<String> licensePlates,
-    @Schema(description = "Horodatage de création du compte", example = "2026-11-01T10:15:30Z")
+    @Schema(description = "Account creation timestamp", example = "2026-11-01T10:15:30Z")
         Instant createdAt,
-    @Schema(
-            description = "Horodatage de dernière mise à jour du profil",
-            example = "2026-11-07T12:00:00Z")
+    @Schema(description = "Profile last update timestamp", example = "2026-11-07T12:00:00Z")
         Instant updatedAt) {
   public static UserResponse fromEntity(User user) {
     if (user == null) {

@@ -69,7 +69,7 @@ class OpenApiIntegrationTest {
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         // Verify servers configuration
         .andExpect(jsonPath("$.servers[0].url").value("/"))
-        .andExpect(jsonPath("$.servers[0].description").value("Direct / Local (Défaut)"))
+        .andExpect(jsonPath("$.servers[0].description").value("Direct / Local (Default)"))
         .andExpect(jsonPath("$.servers[1].url").value("/api"))
         .andExpect(jsonPath("$.servers[1].description").value("Traefik API Gateway (WAN)"))
         // Verify canonical non-duplicated paths

@@ -29,8 +29,7 @@ class JwtTokenServiceTest {
   }
 
   @Test
-  @DisplayName(
-      "Génère un token valide avec claims userId, role, email et clientCode pour un Client")
+  @DisplayName("Generates valid token with claims userId, role, email, and clientCode for Client")
   void shouldGenerateAndValidateTokenSuccessfully() {
     UUID publicId = UUID.randomUUID();
     Client user =
@@ -55,7 +54,7 @@ class JwtTokenServiceTest {
   }
 
   @Test
-  @DisplayName("Génère un token pour Admin sans claim clientCode")
+  @DisplayName("Generates token for Admin without clientCode claim")
   void shouldGenerateTokenForAdminWithoutClientCode() {
     UUID publicId = UUID.randomUUID();
     Admin admin =
@@ -75,7 +74,7 @@ class JwtTokenServiceTest {
   }
 
   @Test
-  @DisplayName("Rejette un token malformé ou falsifié avec UnauthorizedException")
+  @DisplayName("Rejects malformed or forged token with UnauthorizedException")
   void shouldRejectMalformedToken() {
     assertThatThrownBy(() -> jwtTokenService.validateAndExtractClaims("not.a.valid.jwt.token"))
         .isInstanceOf(UnauthorizedException.class);
