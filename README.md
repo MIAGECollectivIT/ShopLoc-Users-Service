@@ -303,8 +303,7 @@ Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) e
 │   │   │       │       ├── UserIdentityResolver.java
 │   │   │       │       └── UserProfileServiceImpl.java
 │   │   │       ├── util/
-│   │   │       │   ├── ClientCodeGenerator.java    # Base62 7-character code generator
-│   │   │       │   └── PasswordHashGenerator.java  # Dev hashing utility
+│   │   │       │   └── ClientCodeGenerator.java    # Base62 7-character code generator
 │   │   │       ├── validation/
 │   │   │       │   ├── FrenchLicensePlate.java          # French license plate validation annotation
 │   │   │       │   ├── FrenchLicensePlateValidator.java # SIV/FNI format validator & normalizer
@@ -338,8 +337,7 @@ Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) e
 │       │       │   ├── LoyaltyCardIdentificationServiceTest.java
 │       │       │   └── UserProfileServiceTest.java
 │       │       ├── util/
-│       │       │   ├── ClientCodeGeneratorTest.java
-│       │       │   └── PasswordHashGeneratorTest.java
+│       │       │   └── ClientCodeGeneratorTest.java
 │       │       ├── validation/
 │       │       │   ├── FrenchLicensePlateValidatorTest.java
 │       │       │   ├── MinAgeValidatorTest.java

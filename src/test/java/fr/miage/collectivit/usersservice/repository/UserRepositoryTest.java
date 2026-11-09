@@ -108,7 +108,7 @@ class UserRepositoryTest {
   }
 
   @Test
-  void shouldFindUserByClientCodeAndCheckExistence() {
+  void shouldCheckExistenceByClientCode() {
     Client user =
         Client.builder()
             .email("client.code@example.com")
@@ -124,10 +124,6 @@ class UserRepositoryTest {
 
     assertThat(userRepository.existsByClientCode("xY9z0W1")).isTrue();
     assertThat(userRepository.existsByClientCode("0000000")).isFalse();
-
-    Optional<User> found = userRepository.findByClientCode("xY9z0W1");
-    assertThat(found).isPresent();
-    assertThat(found.get().getLastName()).isEqualTo("Durand");
   }
 
   @Test

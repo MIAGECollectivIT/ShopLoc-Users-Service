@@ -20,9 +20,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   boolean existsByEmail(String email);
 
-  @Query("SELECT c FROM Client c WHERE c.clientCode = :clientCode")
-  Optional<User> findByClientCode(@Param("clientCode") String clientCode);
-
   @Query("SELECT COUNT(c) > 0 FROM Client c WHERE c.clientCode = :clientCode")
   boolean existsByClientCode(@Param("clientCode") String clientCode);
 
