@@ -70,7 +70,7 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
     String token = extractToken(request);
     if (token == null || token.isEmpty()) {
       throw new UnauthorizedException(
-          "Authentification requise. Veuillez fournir un jeton Bearer JWT ou un cookie de session valide.");
+          "Authentication required. Please provide a valid Bearer JWT token or session cookie.");
     }
 
     Claims claims = jwtTokenService.validateAndExtractClaims(token);

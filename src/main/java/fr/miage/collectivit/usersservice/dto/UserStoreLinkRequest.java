@@ -4,19 +4,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
-@Schema(description = "Requête de liaison entre un commerçant partenaire et un magasin")
+@Schema(description = "Request payload to link a partner merchant to a store")
 public record UserStoreLinkRequest(
     @Schema(
-            description = "Identifiant interne de l'utilisateur commerçant propriétaire",
+            description = "Internal database identifier of the merchant partner",
             example = "10",
             requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "L'identifiant du partenaire propriétaire est obligatoire")
-        @Positive(message = "L'identifiant du partenaire propriétaire doit être valide")
+        @NotNull(message = "Partner user identifier is mandatory")
+        @Positive(message = "Partner user identifier must be positive")
         Long userId,
     @Schema(
-            description = "Identifiant interne du commerce à rattacher",
+            description = "Internal identifier of the store to link",
             example = "42",
             requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "L'identifiant du commerce est obligatoire")
-        @Positive(message = "L'identifiant du commerce doit être valide")
+        @NotNull(message = "Store identifier is mandatory")
+        @Positive(message = "Store identifier must be positive")
         Long storeId) {}

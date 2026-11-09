@@ -50,7 +50,7 @@ public class ValidPasswordValidator implements ConstraintValidator<ValidPassword
       context.disableDefaultConstraintViolation();
       context
           .buildConstraintViolationWithTemplate(
-              "Ce mot de passe est trop commun ou facile à deviner, veuillez en choisir un plus robuste.")
+              "This password is too common or easily guessable, please choose a stronger password.")
           .addConstraintViolation();
       return true;
     }

@@ -80,11 +80,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             .orElseThrow(
                 () ->
                     new UnauthorizedException(
-                        "Identifiants invalides (adresse email ou mot de passe incorrect)"));
+                        "Invalid credentials (incorrect email address or password)"));
 
     if (user.isLocked()) {
       throw new AccountLockedException(
-          "Compte temporairement bloqué suite à un nombre trop élevé d'échecs d'authentification. Veuillez réessayer plus tard.");
+          "Account temporarily locked due to excessive authentication failures. Please try again later.");
     }
 
     if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
@@ -93,15 +93,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
       if (user.isLocked()) {
         throw new AccountLockedException(
-            "Compte temporairement bloqué suite à un nombre trop élevé d'échecs consécutifs ("
+            "Account temporarily locked due to excessive consecutive failures ("
                 + maxFailedAttempts
-                + " tentatives). Veuillez réessayer dans "
+                + " attempts). Please try again in "
                 + lockoutMinutes
                 + " minutes.");
       }
 
-      throw new UnauthorizedException(
-          "Identifiants invalides (adresse email ou mot de passe incorrect)");
+      throw new UnauthorizedException("Invalid credentials (incorrect email address or password)");
     }
 
     if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
@@ -124,8 +123,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
       return;
     }
     String lowerPassword = password.toLowerCase(ROOT);
-    checkName(lowerPassword, firstName, "prénom");
-    checkName(lowerPassword, lastName, "nom");
+    checkName(lowerPassword, firstName, "first name");
+    checkName(lowerPassword, lastName, "last name");
     checkEmailLocalPart(lowerPassword, email);
   }
 
@@ -134,7 +133,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         && name.trim().length() >= 3
         && lowerPassword.contains(name.trim().toLowerCase(ROOT))) {
       throw new IllegalArgumentException(
-          "Le mot de passe ne doit pas contenir votre " + fieldLabel + " (recommandation CNIL).");
+          "Password must not contain your " + fieldLabel + " (CNIL recommendation).");
     }
   }
 
@@ -143,7 +142,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
       String localPart = email.substring(0, email.indexOf('@')).trim().toLowerCase(ROOT);
       if (localPart.length() >= 3 && lowerPassword.contains(localPart)) {
         throw new IllegalArgumentException(
-            "Le mot de passe ne doit pas contenir votre adresse email (recommandation CNIL).");
+            "Password must not contain your email address (CNIL recommendation).");
       }
     }
   }

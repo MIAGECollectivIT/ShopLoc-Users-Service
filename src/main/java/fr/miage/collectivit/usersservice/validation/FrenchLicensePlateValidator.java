@@ -8,9 +8,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Validates vehicle license plates according to French standards: - SIV (Système d'Immatriculation
- * des Véhicules, since 2009): AA-123-AA (excluding I, O, U) - FNI (Fichier National des
- * Immatriculations, 1950-2009): 1234 AB 75
+ * Validates vehicle license plates according to French standards: - SIV (Vehicle Registration
+ * System, since 2009): AA-123-AA (excluding I, O, U) - FNI (National Registration File, 1950-2009):
+ * 1234 AB 75
  */
 public class FrenchLicensePlateValidator
     implements ConstraintValidator<FrenchLicensePlate, String> {

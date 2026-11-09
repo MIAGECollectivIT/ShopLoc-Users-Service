@@ -5,10 +5,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-@Schema(description = "Requête d'ajout ou mise à jour d'un véhicule")
+@Schema(description = "Request payload to add or update a vehicle")
 public record VehicleRequest(
     @Schema(
-            description = "Plaque d'immatriculation française valide (format SIV AA-123-BB ou FNI)",
+            description = "Valid French license plate (format SIV AA-123-BB or FNI)",
             example = "AA-123-BB",
             requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "License plate is mandatory")

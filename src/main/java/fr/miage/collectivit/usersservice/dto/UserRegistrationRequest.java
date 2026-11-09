@@ -16,24 +16,24 @@ import lombok.Builder;
 import lombok.ToString;
 
 @Builder
-@Schema(description = "Données d'inscription d'un nouvel utilisateur client")
+@Schema(description = "Registration payload for a new client user")
 public record UserRegistrationRequest(
     @Schema(
-            description = "Prénom de l'utilisateur",
+            description = "User first name",
             example = "Alice",
             requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "First name is mandatory")
         @Size(max = 100, message = "First name must not exceed 100 characters")
         String firstName,
     @Schema(
-            description = "Nom de famille de l'utilisateur",
+            description = "User last name",
             example = "Dupont",
             requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Last name is mandatory")
         @Size(max = 100, message = "Last name must not exceed 100 characters")
         String lastName,
     @Schema(
-            description = "Date de naissance (doit avoir au moins 18 ans)",
+            description = "Birth date (must be at least 18 years old)",
             example = "1995-04-20",
             requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "Birth date is mandatory")
@@ -41,7 +41,7 @@ public record UserRegistrationRequest(
         @MinAge(value = 18, message = "User must be at least 18 years old")
         LocalDate birthDate,
     @Schema(
-            description = "Adresse email unique",
+            description = "Unique email address",
             example = "alice.dupont@example.com",
             requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Email is mandatory")
@@ -50,7 +50,7 @@ public record UserRegistrationRequest(
         String email,
     @Schema(
             description =
-                "Mot de passe sécurisé (au moins 12 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial)",
+                "Secure password (at least 12 characters, 1 uppercase, 1 lowercase, 1 digit, 1 special character)",
             example = "SecurePass123!",
             requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Password is mandatory")
@@ -60,14 +60,11 @@ public record UserRegistrationRequest(
     @ArraySchema(
             schema =
                 @Schema(
-                    description =
-                        "Plaque d'immatriculation française valide (format AA-123-BB ou FNI)",
+                    description = "Valid French license plate (format AA-123-BB or FNI)",
                     example = "AA-123-BB"))
         List<@FrenchLicensePlate String> licensePlates,
     // Physical card pickup location is optional as the customer can choose not to request a
     // physical card
-    @Schema(
-            description = "Lieu de retrait de la carte physique (optionnel)",
-            example = "Mairie de Lille")
+    @Schema(description = "Physical card pickup location (optional)", example = "Mairie de Lille")
         @Size(max = 150, message = "Pickup location must not exceed 150 characters")
         String pickupLocation) {}

@@ -255,7 +255,7 @@ class AuthenticationServiceTest {
 
     assertThatThrownBy(() -> authenticationService.login(req))
         .isInstanceOf(AccountLockedException.class)
-        .hasMessageContaining("bloqué");
+        .hasMessageContaining("locked");
 
     assertThat(user.isLocked()).isTrue();
     verify(userRepository).save(user);
@@ -277,7 +277,7 @@ class AuthenticationServiceTest {
 
     assertThatThrownBy(() -> authenticationService.login(req))
         .isInstanceOf(AccountLockedException.class)
-        .hasMessageContaining("bloqué");
+        .hasMessageContaining("locked");
 
     verify(passwordEncoder, never()).matches(anyString(), anyString());
   }

@@ -68,11 +68,11 @@ public class JwtTokenService {
 
     if (initRsaKey(cleanKey)) {
       this.asymmetric = true;
-      log.info("JWT Token Service initialisé avec algorithme asymétrique RS256.");
+      log.info("JWT Token Service initialized with asymmetric algorithm RS256.");
     } else {
       initHmacKey(cleanKey);
       this.asymmetric = false;
-      log.info("JWT Token Service initialisé avec algorithme symétrique HS256.");
+      log.info("JWT Token Service initialized with symmetric algorithm HS256.");
     }
   }
 
@@ -83,7 +83,7 @@ public class JwtTokenService {
     }
     if (privateKeyString == null || privateKeyString.isBlank()) {
       throw new IllegalArgumentException(
-          "Aucune clé de signature JWT (application.security.jwt.private-key ou secret-key) n'a été configurée.");
+          "No JWT signing key (application.security.jwt.private-key or secret-key) configured.");
     }
   }
 
@@ -107,7 +107,7 @@ public class JwtTokenService {
     } catch (GeneralSecurityException | IllegalArgumentException ex) {
       if (log.isDebugEnabled()) {
         log.debug(
-            "La clé n'est pas une clé RSA PKCS#8 valide, essai en tant que clé HMAC symétrique: {}",
+            "Key is not a valid PKCS#8 RSA key, falling back to symmetric HMAC key: {}",
             ex.getMessage());
       }
       return false;
@@ -174,13 +174,13 @@ public class JwtTokenService {
       }
     } catch (JwtException | IllegalArgumentException ex) {
       throw new UnauthorizedException(
-          "Jeton d'authentification invalide ou expiré : " + ex.getMessage(), ex);
+          "Invalid or expired authentication token: " + ex.getMessage(), ex);
     }
 
     if (tokenRevocationService != null
         && claims.getId() != null
         && tokenRevocationService.isRevoked(claims.getId())) {
-      throw new UnauthorizedException("Jeton révoqué suite à une déconnexion.");
+      throw new UnauthorizedException("Token has been revoked upon logout.");
     }
 
     return claims;

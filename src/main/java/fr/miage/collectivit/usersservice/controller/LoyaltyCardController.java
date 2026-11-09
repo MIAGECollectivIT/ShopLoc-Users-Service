@@ -45,7 +45,7 @@ public class LoyaltyCardController {
   })
   public ResponseEntity<UserResponse> identifyByCardNumber(
       @Parameter(
-              description = "Numéro de carte de fidélité ou code client à 7 caractères",
+              description = "Loyalty card number or 7-character client code",
               example = "CL12345",
               required = true)
           @PathVariable
