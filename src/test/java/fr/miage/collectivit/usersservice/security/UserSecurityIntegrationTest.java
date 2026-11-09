@@ -49,13 +49,13 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /v1/users/status est public et retourne 200 sans token")
+  @DisplayName("GET /v1/users/status is public and returns 200 without token")
   void shouldAllowPublicAccessToStatus() throws Exception {
     mockMvc.perform(get("/v1/users/status")).andExpect(status().isOk());
   }
 
   @Test
-  @DisplayName("GET /v1/auth/public-key est public et retourne la clé publique")
+  @DisplayName("GET /v1/auth/public-key is public and returns the public key")
   void shouldExposePublicKeyWithoutAuthentication() throws Exception {
     mockMvc.perform(get("/v1/auth/public-key")).andExpect(status().isOk());
   }
@@ -85,7 +85,7 @@ class UserSecurityIntegrationTest {
 
   @Test
   @DisplayName(
-      "POST /v1/users/login valide les identifiants et retourne un token JWT porteur du rôle")
+      "POST /v1/users/login validates credentials and returns a JWT token carrying the role")
   void shouldAuthenticateAndIssueJwtWithRole() throws Exception {
     Merchant user =
         Merchant.builder()
@@ -113,7 +113,7 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("POST /v1/users/login avec mauvais mot de passe renvoie 401")
+  @DisplayName("POST /v1/users/login with wrong password returns 401 Unauthorized")
   void shouldRejectInvalidCredentials() throws Exception {
     Client user =
         Client.builder()
@@ -138,7 +138,7 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("POST /v1/users/login verrouille le compte après 5 tentatives échouées (HTTP 423)")
+  @DisplayName("POST /v1/users/login locks account after 5 failed attempts (HTTP 423)")
   void shouldLockAccountAfterFiveConsecutiveFailedAttempts() throws Exception {
     Client user =
         Client.builder()
@@ -190,13 +190,13 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /v1/users/me sans token renvoie 401 Unauthorized")
+  @DisplayName("GET /v1/users/me without token returns 401 Unauthorized")
   void shouldDenyMeEndpointWhenTokenMissing() throws Exception {
     mockMvc.perform(get("/v1/users/me")).andExpect(status().isUnauthorized());
   }
 
   @Test
-  @DisplayName("GET /v1/users/me avec token Bearer valide renvoie 200 OK")
+  @DisplayName("GET /v1/users/me with valid Bearer token returns 200 OK")
   void shouldAllowMeEndpointWhenTokenValid() throws Exception {
     Client user =
         Client.builder()
@@ -220,7 +220,7 @@ class UserSecurityIntegrationTest {
 
   @Test
   @DisplayName(
-      "GET /api/v1/users/me avec token Bearer valide pour un Client renvoie 200 OK avec toutes les infos")
+      "GET /api/v1/users/me with valid Bearer token for Client returns 200 OK with full details")
   void shouldAllowApiMeEndpointWhenClientTokenValid() throws Exception {
     Client user =
         Client.builder()
@@ -251,7 +251,7 @@ class UserSecurityIntegrationTest {
 
   @Test
   @DisplayName(
-      "GET /api/v1/users/me avec token Bearer valide pour un Merchant renvoie 200 OK sans code client ni plaques")
+      "GET /api/v1/users/me with valid Bearer token for Merchant returns 200 OK without client fields")
   void shouldAllowApiMeEndpointWhenMerchantTokenValidWithoutClientFields() throws Exception {
     Merchant user =
         Merchant.builder()
@@ -278,7 +278,7 @@ class UserSecurityIntegrationTest {
 
   @Test
   @DisplayName(
-      "GET /api/v1/users/me avec token Bearer valide pour un Admin renvoie 200 OK sans code client ni plaques")
+      "GET /api/v1/users/me with valid Bearer token for Admin returns 200 OK without client fields")
   void shouldAllowApiMeEndpointWhenAdminTokenValidWithoutClientFields() throws Exception {
     Admin user =
         Admin.builder()
@@ -304,13 +304,13 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /api/v1/users/me sans token renvoie 401 Unauthorized")
+  @DisplayName("GET /api/v1/users/me without token returns 401 Unauthorized")
   void shouldDenyApiMeEndpointWhenTokenMissing() throws Exception {
     mockMvc.perform(get("/api/v1/users/me")).andExpect(status().isUnauthorized());
   }
 
   @Test
-  @DisplayName("POST /v1/users/logout révoque le jeton et bloque les accès ultérieurs")
+  @DisplayName("POST /v1/users/logout revokes token and denies subsequent requests")
   void shouldRevokeTokenOnLogoutAndDenySubsequentRequests() throws Exception {
     Client user =
         Client.builder()
@@ -342,8 +342,7 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName(
-      "GET /v1/users/{identifier} fonctionne par UUID et par ID numérique pour son propre compte")
+  @DisplayName("GET /v1/users/{identifier} works with UUID and numeric ID for own account")
   void shouldAllowAccessByNumericIdAndUuidWithToken() throws Exception {
     Merchant user =
         Merchant.builder()
@@ -371,8 +370,7 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName(
-      "GET /v1/users/{userId} pour un autre utilisateur sans rôle ADMIN renvoie 403 Forbidden")
+  @DisplayName("GET /v1/users/{userId} for another user without ADMIN role returns 403 Forbidden")
   void shouldDenyAccessToAnotherUserProfileForNonAdminUser() throws Exception {
     Client victim =
         Client.builder()
@@ -405,7 +403,7 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /v1/users/{userId} pour un autre utilisateur avec rôle ADMIN renvoie 200 OK")
+  @DisplayName("GET /v1/users/{userId} for another user with ADMIN role returns 200 OK")
   void shouldAllowAdminToAccessAnyUserProfile() throws Exception {
     Client victim =
         Client.builder()
@@ -438,7 +436,7 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("POST /v1/users/stores enregistre le lien entre commerce et utilisateur")
+  @DisplayName("POST /v1/users/stores records link between store and user")
   void shouldAllowStoreLinkEndpointWithToken() throws Exception {
     Merchant user =
         Merchant.builder()
@@ -463,14 +461,13 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /v1/users/{userId} sans token renvoie 401 Unauthorized")
+  @DisplayName("GET /v1/users/{userId} without token returns 401 Unauthorized")
   void shouldDenyGetUserByIdWithoutToken() throws Exception {
     mockMvc.perform(get("/v1/users/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
   }
 
   @Test
-  @DisplayName(
-      "GET /v1/auth/verify avec Cookie shoploc_token retourne 200 et les headers d'identité")
+  @DisplayName("GET /v1/auth/verify with shoploc_token cookie returns 200 and identity headers")
   void shouldAuthenticateViaSessionCookie() throws Exception {
     Client user =
         Client.builder()

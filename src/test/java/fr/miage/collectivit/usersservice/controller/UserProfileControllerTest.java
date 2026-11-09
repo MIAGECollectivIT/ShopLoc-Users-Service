@@ -387,7 +387,7 @@ class UserProfileControllerTest {
   void shouldReturnForbiddenWhenNonClientAddsVehicle() throws Exception {
     VehicleRequest request = new VehicleRequest("AA-123-AA");
     when(userProfileService.addVehicle(eq(userId), any()))
-        .thenThrow(new ForbiddenException("Seuls les clients peuvent enregistrer un véhicule."));
+        .thenThrow(new ForbiddenException("Only clients can register a vehicle."));
 
     mockMvc
         .perform(

@@ -93,12 +93,12 @@ public class UserProfileController {
   })
   public ResponseEntity<UserResponse> getCurrentUserProfile(
       @Parameter(
-              description = "Identifiant UUID transmis par la passerelle",
+              description = "UUID identifier forwarded by the gateway",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
           @RequestHeader(value = HEADER_USER_ID, required = false)
           String userIdHeader,
       @Parameter(
-              description = "Adresse email transmise par la passerelle",
+              description = "Email address forwarded by the gateway",
               example = "alice.dupont@example.com")
           @RequestHeader(value = HEADER_USER_EMAIL, required = false)
           String userEmailHeader,
@@ -147,12 +147,10 @@ public class UserProfileController {
                 array = @ArraySchema(schema = @Schema(implementation = PartnerResponse.class))))
   })
   public ResponseEntity<List<PartnerResponse>> getPartners(
-      @Parameter(
-              description = "Filtre textuel sur le nom du commerçant ou l'enseigne",
-              example = "boulangerie")
+      @Parameter(description = "Textual filter on merchant name or brand", example = "boulangerie")
           @RequestParam(value = "query", required = false)
           String query,
-      @Parameter(description = "Nombre maximal de résultats à retourner", example = "20")
+      @Parameter(description = "Maximum number of results to return", example = "20")
           @RequestParam(value = "limit", required = false, defaultValue = "20")
           int limit) {
     return ResponseEntity.ok(userProfileService.getPartners(query, limit));
@@ -182,7 +180,7 @@ public class UserProfileController {
   })
   public ResponseEntity<UserResponse> getUserProfile(
       @Parameter(
-              description = "Identifiant UUID public ou identifiant numérique de l'utilisateur",
+              description = "Public UUID identifier or numeric ID of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
@@ -225,7 +223,7 @@ public class UserProfileController {
 
     if (!isSelf) {
       throw new ForbiddenException(
-          "Accès refusé : vous n'êtes pas autorisé à consulter les données personnelles de cet utilisateur.");
+          "Access denied: you are not authorized to view this user's personal details.");
     }
   }
 
@@ -249,7 +247,7 @@ public class UserProfileController {
     }
 
     throw new ForbiddenException(
-        "Accès refusé : vous n'êtes pas autorisé à gérer les véhicules de cet utilisateur.");
+        "Access denied: you are not authorized to manage this user's vehicles.");
   }
 
   private boolean isUnauthenticated(String role, String authUserId, String authEmail) {
@@ -288,7 +286,7 @@ public class UserProfileController {
   public ResponseEntity<Void> linkStoreToUser(
       @Valid
           @io.swagger.v3.oas.annotations.parameters.RequestBody(
-              description = "Liaison entre le partenaire et le magasin",
+              description = "Link payload between partner and store",
               required = true)
           @RequestBody
           UserStoreLinkRequest request) {
@@ -320,14 +318,14 @@ public class UserProfileController {
   })
   public ResponseEntity<UserResponse> updateUserProfile(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur à mettre à jour",
+              description = "UUID identifier of the user to update",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
           UUID userId,
       @Valid
           @io.swagger.v3.oas.annotations.parameters.RequestBody(
-              description = "Données mises à jour du profil",
+              description = "Updated profile data",
               required = true)
           @RequestBody
           UserUpdateRequest request) {
@@ -351,7 +349,7 @@ public class UserProfileController {
   })
   public ResponseEntity<Void> deleteUserProfile(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur à supprimer",
+              description = "UUID identifier of the user to delete",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
@@ -384,7 +382,7 @@ public class UserProfileController {
   })
   public ResponseEntity<List<VehicleResponse>> getVehicles(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur propriétaire",
+              description = "UUID identifier of the owner user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
@@ -426,14 +424,14 @@ public class UserProfileController {
   })
   public ResponseEntity<VehicleResponse> addVehicle(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur",
+              description = "UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
           UUID userId,
       @Valid
           @io.swagger.v3.oas.annotations.parameters.RequestBody(
-              description = "Informations sur le véhicule à ajouter",
+              description = "Vehicle information to add",
               required = true)
           @RequestBody
           VehicleRequest request,
@@ -476,20 +474,20 @@ public class UserProfileController {
   })
   public ResponseEntity<VehicleResponse> updateVehicle(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur",
+              description = "UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
           UUID userId,
       @Parameter(
-              description = "Identifiant ou ancienne plaque d'immatriculation du véhicule",
+              description = "Vehicle identifier or previous license plate",
               example = "AA-123-BB",
               required = true)
           @PathVariable
           String vehicleId,
       @Valid
           @io.swagger.v3.oas.annotations.parameters.RequestBody(
-              description = "Nouvelle immatriculation du véhicule",
+              description = "New license plate details",
               required = true)
           @RequestBody
           VehicleRequest request,
@@ -519,13 +517,13 @@ public class UserProfileController {
   })
   public ResponseEntity<Void> removeVehicle(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur",
+              description = "UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
           UUID userId,
       @Parameter(
-              description = "Identifiant ou plaque d'immatriculation du véhicule à supprimer",
+              description = "Vehicle identifier or license plate to delete",
               example = "AA-123-BB",
               required = true)
           @PathVariable
@@ -564,13 +562,11 @@ public class UserProfileController {
   })
   public ResponseEntity<List<VehicleResponse>> getCurrentUserVehicles(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur",
+              description = "UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
           @RequestHeader(value = HEADER_USER_ID, required = false)
           String userIdHeader,
-      @Parameter(
-              description = "Adresse email de l'utilisateur",
-              example = "alice.dupont@example.com")
+      @Parameter(description = "Email address of the user", example = "alice.dupont@example.com")
           @RequestHeader(value = HEADER_USER_EMAIL, required = false)
           String userEmailHeader,
       HttpServletRequest servletRequest) {
@@ -615,18 +611,16 @@ public class UserProfileController {
   })
   public ResponseEntity<VehicleResponse> addCurrentUserVehicle(
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur",
+              description = "UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
           @RequestHeader(value = HEADER_USER_ID, required = false)
           String userIdHeader,
-      @Parameter(
-              description = "Adresse email de l'utilisateur",
-              example = "alice.dupont@example.com")
+      @Parameter(description = "Email address of the user", example = "alice.dupont@example.com")
           @RequestHeader(value = HEADER_USER_EMAIL, required = false)
           String userEmailHeader,
       @Valid
           @io.swagger.v3.oas.annotations.parameters.RequestBody(
-              description = "Informations sur le véhicule à enregistrer",
+              description = "Vehicle information to register",
               required = true)
           @RequestBody
           VehicleRequest request,
@@ -675,7 +669,7 @@ public class UserProfileController {
   })
   public ResponseEntity<VehicleResponse> updateCurrentUserVehicle(
       @Parameter(
-              description = "Identifiant ou plaque d'immatriculation actuelle du véhicule",
+              description = "Current vehicle identifier or license plate",
               example = "AA-123-BB",
               required = true)
           @PathVariable
@@ -687,13 +681,11 @@ public class UserProfileController {
           @RequestBody
           VehicleRequest request,
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur",
+              description = "UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
           @RequestHeader(value = HEADER_USER_ID, required = false)
           String userIdHeader,
-      @Parameter(
-              description = "Adresse email de l'utilisateur",
-              example = "alice.dupont@example.com")
+      @Parameter(description = "Email address of the user", example = "alice.dupont@example.com")
           @RequestHeader(value = HEADER_USER_EMAIL, required = false)
           String userEmailHeader,
       HttpServletRequest servletRequest) {
@@ -728,19 +720,17 @@ public class UserProfileController {
   })
   public ResponseEntity<Void> removeCurrentUserVehicle(
       @Parameter(
-              description = "Identifiant ou plaque d'immatriculation du véhicule à supprimer",
+              description = "Vehicle identifier or license plate to delete",
               example = "AA-123-BB",
               required = true)
           @PathVariable
           String vehicleId,
       @Parameter(
-              description = "Identifiant UUID de l'utilisateur",
+              description = "UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
           @RequestHeader(value = HEADER_USER_ID, required = false)
           String userIdHeader,
-      @Parameter(
-              description = "Adresse email de l'utilisateur",
-              example = "alice.dupont@example.com")
+      @Parameter(description = "Email address of the user", example = "alice.dupont@example.com")
           @RequestHeader(value = HEADER_USER_EMAIL, required = false)
           String userEmailHeader,
       HttpServletRequest servletRequest) {

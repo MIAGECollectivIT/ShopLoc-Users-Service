@@ -51,7 +51,7 @@ public class TokenRevocationServiceImpl implements TokenRevocationService {
   @Scheduled(cron = "${application.security.jwt.revocation-purge-cron:0 0 * * * *}")
   public void purgeExpiredTokens() {
     Instant now = Instant.now();
-    log.debug("Exécution de la purge des jetons révoqués expirés avant {}", now);
+    log.debug("Executing purge of revoked tokens expired before {}", now);
     revokedTokenRepository.deleteByExpiresAtBefore(now);
   }
 }

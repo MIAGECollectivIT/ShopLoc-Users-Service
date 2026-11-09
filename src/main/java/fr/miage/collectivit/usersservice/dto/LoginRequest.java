@@ -7,19 +7,19 @@ import lombok.Builder;
 import lombok.ToString;
 
 @Builder
-@Schema(description = "Requête d'authentification utilisateur")
+@Schema(description = "User authentication request")
 public record LoginRequest(
     @Schema(
-            description = "Adresse email du compte utilisateur",
+            description = "User account email address",
             example = "alice.dupont@example.com",
             requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "L'adresse email est obligatoire")
-        @Email(message = "Format d'adresse email invalide")
+        @NotBlank(message = "Email is mandatory")
+        @Email(message = "Invalid email address format")
         String email,
     @Schema(
-            description = "Mot de passe en clair du compte",
+            description = "Account cleartext password",
             example = "SecurePass123!",
             requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Le mot de passe est obligatoire")
+        @NotBlank(message = "Password is mandatory")
         @ToString.Exclude
         String password) {}

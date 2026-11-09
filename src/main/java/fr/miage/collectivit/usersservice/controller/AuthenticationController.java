@@ -137,8 +137,7 @@ public class AuthenticationController {
                 examples =
                     @ExampleObject(
                         name = "LogoutSuccessExample",
-                        value =
-                            "{\"message\": \"Déconnexion réussie. Le jeton a été révoqué.\"}"))),
+                        value = "{\"message\": \"Logout successful. Token has been revoked.\"}"))),
     @ApiResponse(responseCode = "401", description = "Missing or invalid token", content = @Content)
   })
   public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
@@ -148,7 +147,7 @@ public class AuthenticationController {
           claims.getId(),
           claims.getExpiration() != null ? claims.getExpiration().toInstant() : null);
     }
-    return ResponseEntity.ok(Map.of("message", "Déconnexion réussie. Le jeton a été révoqué."));
+    return ResponseEntity.ok(Map.of("message", "Logout successful. Token has been revoked."));
   }
 
   @GetMapping(

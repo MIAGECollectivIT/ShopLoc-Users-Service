@@ -33,9 +33,9 @@ User management microservice for the ShopLoc project (MIAGE Collectiv'IT).
 - **Spring Boot Starter Data JPA**: Object-Relational Mapping (Hibernate) and Spring Data repositories.
 - **PostgreSQL JDBC Driver**: Relational database driver for production and containerized environments.
 - **Spring Security Crypto**: BCrypt password hashing (work factor 12) with automated per-password salting.
-- **JWT & Cryptographie RSA RS256**: JSON Web Tokens signés asymétriquement (JJWT) avec découverte JWKS RFC 7517 et révocation de jetons.
+- **JWT & RSA RS256 Cryptography**: Asymmetrically signed JSON Web Tokens (JJWT) with RFC 7517 JWKS discovery and token revocation tracking.
 - **Spring Boot Starter Validation**: Server-side Bean Validation with Hibernate Validator.
-- **Springdoc OpenAPI (Swagger UI)**: OpenAPI 3 interactive documentation (`/swagger-ui/index.html`) avec exemples de requêtes pré-remplis, support multi-serveurs (`/` direct et `/api` gateway) et authentification JWT Bearer.
+- **Springdoc OpenAPI (Swagger UI)**: OpenAPI 3 interactive documentation (`/swagger-ui/index.html`) with prefilled request examples, multi-server support (`/` direct and `/api` gateway), and JWT Bearer authentication.
 - **Project Lombok**: Reduces boilerplate code (getters, setters, builders, constructors) via annotation processing.
 - **H2 Database (Test scope)**: In-memory database with PostgreSQL compatibility mode for automated unit and integration tests.
 - **Spring Boot Starter Test & Testing Suite**:
@@ -60,8 +60,8 @@ The file defines customizable environment variables for local Docker Compose and
 - `DB_HOST`, `DB_PORT`: PostgreSQL connection host and port (`db` for Docker Compose, `localhost` for local IDE)
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`: PostgreSQL container credentials
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Spring Boot datasource configuration
-- `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`: Clés asymétriques RSA (format PEM / PKCS#8 et X.509 Base64) pour la signature et la vérification des JWT
-- `JWT_KEY_ID`: Identifiant du Key ID pour le standard JWKS (défaut `shoploc-key-1`)
+- `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`: Asymmetric RSA keys (PEM / PKCS#8 and X.509 Base64 format) for JWT signing and verification
+- `JWT_KEY_ID`: Key ID identifier for the JWKS standard (default `shoploc-key-1`)
 
 > In production (K3s cluster), secrets are provided directly by Kubernetes Secrets (`db-credentials-users`).
 
@@ -134,31 +134,31 @@ docker run -p 8080:8080 users-service
 
 ### 4.1 Interactive Documentation (Swagger UI)
 Once the service is started, access interactive OpenAPI documentation at:
-- **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) (ou [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html))
+- **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) (or [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html))
 - **OpenAPI JSON specification**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
 
 > [!NOTE]
 > **Port Configuration:** If you launch all of ShopLoc microservices together like the ingress does, the port might not be `8080`. You might need to check your environment / ingress configuration to access Swagger (the default multi-service configuration uses port `8081`, e.g. `http://localhost:8081/swagger-ui/index.html`).
 
-#### Serveurs disponibles dans Swagger UI
-Dans le menu déroulant **Servers** en haut de la page Swagger UI, vous pouvez choisir la cible d'exécution :
-1. **`Direct / Local (Défaut)` (`/`)** : sélectionné par défaut, envoie les requêtes directement vers le service en local (ex: `http://localhost:8080/v1/...`).
-2. **`Traefik API Gateway (WAN)` (`/api`)** : simule les appels transitant par la passerelle Traefik (ex: `/api/v1/...`).
+#### Available Servers in Swagger UI
+In the **Servers** dropdown menu at the top of the Swagger UI page, you can choose the execution target:
+1. **`Direct / Local (Default)` (`/`)**: Selected by default, routes requests directly to the local service (e.g. `http://localhost:8080/v1/...`).
+2. **`Traefik API Gateway (WAN)` (`/api`)**: Simulates calls routed through the Traefik API gateway (e.g. `/api/v1/...`).
 
-#### Exemples de requêtes pré-remplis
-Toutes les routes disposent d'exemples de requêtes pré-remplis avec des données réalistes :
-- `LoginRequest` : email valide et mot de passe conforme à la politique CNIL.
-- `UserRegistrationRequest` : identité, date de naissance (> 18 ans), plaque au format français SIV (`AA-123-BB`) et lieu de retrait.
-- `VehicleRequest` : validation de plaque d'immatriculation française.
-- `UserStoreLinkRequest` : identifiants numériques de partenaire et de commerce.
+#### Prefilled Request Examples
+All endpoints provide prefilled request body examples with realistic data:
+- `LoginRequest`: Valid email address and CNIL-compliant password.
+- `UserRegistrationRequest`: Identity, date of birth (> 18 years old), French SIV license plate format (`AA-123-BB`), and pickup location.
+- `VehicleRequest`: French license plate format validation.
+- `UserStoreLinkRequest`: Partner and store numeric identifiers.
 
-#### Comment s'authentifier dans Swagger UI
-Pour tester les routes protégées directement depuis l'interface :
-1. Ouvrez l'opération publique `POST /v1/users/login`.
-2. Cliquez sur **Try it out** et exécutez la requête avec les identifiants de test pré-remplis (ou l'un des comptes par défaut : `alice.client@example.com` / `ClientPass123!`, `bob.merchant@example.com` / `MerchantPass123!`, `admin@example.com` / `AdminPass123!`).
-3. Copiez la valeur du champ `token` dans la réponse JSON.
-4. Cliquez sur le bouton **Authorize** (cadenas vert en haut à droite de la page) et collez votre jeton JWT (le préfixe `Bearer` est géré automatiquement).
-5. Vous pouvez désormais tester l'ensemble des routes sécurisées (`/me`, `/me/vehicles`, etc.).
+#### How to Authenticate in Swagger UI
+To test protected endpoints directly from the UI:
+1. Open the public operation `POST /v1/users/login`.
+2. Click on **Try it out** and execute the request with prefilled test credentials (or one of the default seed accounts: `alice.client@example.com` / `ClientPass123!`, `bob.merchant@example.com` / `MerchantPass123!`, `admin@example.com` / `AdminPass123!`).
+3. Copy the `token` value from the JSON response body.
+4. Click on the **Authorize** button (green padlock at the top right of the page) and paste your JWT token (the `Bearer ` prefix is handled automatically).
+5. You can now test all secured routes (`/me`, `/me/vehicles`, etc.).
 
 ### 4.2 Authentication in application.yaml
 Authentication is configured centrally in `application.yaml` under `application.security`:
@@ -183,45 +183,45 @@ application:
 
 ### 4.3 Endpoints Overview
 
-Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) et sur le chemin passerelle (`/api/v1/...`).
+All endpoints are supported both on the direct path (`/v1/...`) and on the gateway path (`/api/v1/...`).
 
-| Méthode | Endpoint | Service | Auth Requise | Rôle | Description |
+| Method | Endpoint | Service | Required Auth | Role | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Authentification & Session** | | | | | |
-| `POST` | `/v1/users` | `AuthenticationService` | Non | Public | Inscription d'un nouveau client (désactivée en prod, HTTP 403) |
-| `POST` | `/v1/users/login` | `AuthenticationService` | Non | Public | Connexion utilisateur, émission du jeton JWT Bearer |
-| `POST` | `/v1/users/logout` | `TokenRevocationService` | Oui (Bearer) | Tous | Déconnexion et révocation du JTI du jeton JWT |
-| **Profils Utilisateurs** | | | | | |
-| `GET` | `/v1/users/me` | `UserProfileService` | Oui (Bearer) | Tous | Consultation du profil de l'utilisateur connecté |
-| `GET` | `/v1/users/{userId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Consultation d'un profil par UUID public ou ID numérique |
-| `PUT` | `/v1/users/{userId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Mise à jour des informations personnelles du profil |
-| `DELETE` | `/v1/users/{userId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Suppression d'un compte utilisateur |
-| `GET` | `/v1/users/partners` | `UserProfileService` | Non | Public | Liste des commerçants partenaires pour rattachement |
-| `POST` | `/v1/users/stores` | `UserProfileService` | Oui (Bearer) | MERCHANT / ADMIN | Rattachement d'un magasin à un commerçant partenaire |
-| **Administration des Partenaires (Admin)** | | | | | |
-| `GET` | `/v1/admin/partners` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Liste des comptes partenaires avec filtrage optionnel (query, limit) |
-| `GET` | `/v1/admin/partners/{id}` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Fiche complète détaillée d'un partenaire avec ses boutiques associées |
-| `PUT` | `/v1/admin/partners/{id}` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Mise à jour des informations administratives d'un partenaire |
-| `POST` | `/v1/admin/partners/{id}/stores` | `AdminPartnerService` | Oui (Bearer) | ADMIN | Rattachement d'une boutique existante à un compte partenaire |
-| **Gestion des Véhicules & Plaques** | | | | | |
-| `GET` | `/v1/users/me/vehicles` | `UserProfileService` | Oui (Bearer) | CLIENT | Liste des véhicules du client connecté |
-| `POST` | `/v1/users/me/vehicles` | `UserProfileService` | Oui (Bearer) | CLIENT | Ajout d'une plaque d'immatriculation pour le client connecté |
-| `PUT` | `/v1/users/me/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | CLIENT | Modification d'une plaque d'immatriculation client |
-| `DELETE` | `/v1/users/me/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | CLIENT | Suppression d'une plaque d'immatriculation client |
-| `GET` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Liste des véhicules d'un utilisateur par son ID |
-| `POST` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Ajout d'un véhicule pour un utilisateur |
-| `PUT` | `/v1/users/{userId}/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Modification d'un véhicule d'un utilisateur |
-| `DELETE` | `/v1/users/{userId}/vehicles/{vehicleId}` | `UserProfileService` | Oui (Bearer) | Soi / ADMIN | Suppression d'un véhicule d'un utilisateur |
-| **Carte de Fidélité & Santé** | | | | | |
-| `GET` | `/v1/users/loyalty-cards/{cardNumber}` | `LoyaltyCardIdentificationService` | Oui (Bearer) | Tous | Identification d'un client par son numéro de carte de fidélité |
-| `GET` | `/v1/users/status` | `UsersStatusController` | Non | Public | État de santé opérationnel du microservice (`UP`) |
-| **Cryptographie & Découverte Gateway** | | | | | |
-| `GET` | `/.well-known/jwks.json` | `JwtTokenService` | Non | Public | Découverte JWKS standard RFC 7517 (racine de domaine) |
-| `GET` | `/v1/auth/jwks.json` | `JwtTokenService` | Non | Public | Découverte JWKS sous le préfixe `/v1/auth` |
-| `GET` | `/v1/auth/public-key` | `JwtTokenService` | Non | Public | Clé publique RSA (X.509 SPKI Base64) pour vérification JWT |
-| `GET` | `/v1/auth/revoked-tokens` | `TokenRevocationService` | Non | Public | Liste des JTIs des jetons révoqués (synchro de caches) |
-| `GET` | `/v1/auth/check-revocation` | `TokenRevocationService` | Non | Public | Vérification de révocation d'un JTI spécifique |
-| `GET` | `/v1/auth/verify` | `JwtAuthInterceptor` | Oui (Bearer/Cookie)| Tous | Endpoint ForwardAuth retournant les headers d'identité |
+| **Authentication & Session** | | | | | |
+| `POST` | `/v1/users` | `AuthenticationService` | None | Public | Register a new client user (disabled in production, HTTP 403) |
+| `POST` | `/v1/users/login` | `AuthenticationService` | None | Public | User authentication, returns signed Bearer JWT token |
+| `POST` | `/v1/users/logout` | `TokenRevocationService` | Yes (Bearer) | All | User logout and JWT JTI revocation |
+| **User Profiles** | | | | | |
+| `GET` | `/v1/users/me` | `UserProfileService` | Yes (Bearer) | All | Retrieve current authenticated user profile |
+| `GET` | `/v1/users/{userId}` | `UserProfileService` | Yes (Bearer) | Self / ADMIN | Retrieve user profile by public UUID or numeric ID |
+| `PUT` | `/v1/users/{userId}` | `UserProfileService` | Yes (Bearer) | Self / ADMIN | Update personal profile details |
+| `DELETE` | `/v1/users/{userId}` | `UserProfileService` | Yes (Bearer) | Self / ADMIN | Delete user account |
+| `GET` | `/v1/users/partners` | `UserProfileService` | None | Public | List partner merchants available for store linking |
+| `POST` | `/v1/users/stores` | `UserProfileService` | Yes (Bearer) | MERCHANT / ADMIN | Link a store to a partner merchant |
+| **Partner Administration (Admin)** | | | | | |
+| `GET` | `/v1/admin/partners` | `AdminPartnerService` | Yes (Bearer) | ADMIN | List partner merchant accounts with optional filtering (query, limit) |
+| `GET` | `/v1/admin/partners/{id}` | `AdminPartnerService` | Yes (Bearer) | ADMIN | Detailed partner profile including associated stores |
+| `PUT` | `/v1/admin/partners/{id}` | `AdminPartnerService` | Yes (Bearer) | ADMIN | Update partner administrative details |
+| `POST` | `/v1/admin/partners/{id}/stores` | `AdminPartnerService` | Yes (Bearer) | ADMIN | Associate an existing store with a partner account |
+| **Vehicle & License Plate Management** | | | | | |
+| `GET` | `/v1/users/me/vehicles` | `UserProfileService` | Yes (Bearer) | CLIENT | List vehicles for authenticated client |
+| `POST` | `/v1/users/me/vehicles` | `UserProfileService` | Yes (Bearer) | CLIENT | Add a license plate for authenticated client |
+| `PUT` | `/v1/users/me/vehicles/{vehicleId}` | `UserProfileService` | Yes (Bearer) | CLIENT | Update a client license plate |
+| `DELETE` | `/v1/users/me/vehicles/{vehicleId}` | `UserProfileService` | Yes (Bearer) | CLIENT | Delete a client license plate |
+| `GET` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Yes (Bearer) | Self / ADMIN | List vehicles for a user by user ID |
+| `POST` | `/v1/users/{userId}/vehicles` | `UserProfileService` | Yes (Bearer) | Self / ADMIN | Add a vehicle for a specified user |
+| `PUT` | `/v1/users/{userId}/vehicles/{vehicleId}` | `UserProfileService` | Yes (Bearer) | Self / ADMIN | Update a vehicle for a specified user |
+| `DELETE` | `/v1/users/{userId}/vehicles/{vehicleId}` | `UserProfileService` | Yes (Bearer) | Self / ADMIN | Delete a vehicle for a specified user |
+| **Loyalty Card & Health** | | | | | |
+| `GET` | `/v1/users/loyalty-cards/{cardNumber}` | `LoyaltyCardIdentificationService` | Yes (Bearer) | All | Identify client by loyalty card number or client code |
+| `GET` | `/v1/users/status` | `UsersStatusController` | None | Public | Microservice operational health status (`UP`) |
+| **Cryptography & Gateway Discovery** | | | | | |
+| `GET` | `/.well-known/jwks.json` | `JwtTokenService` | None | Public | Standard RFC 7517 JWKS discovery (domain root) |
+| `GET` | `/v1/auth/jwks.json` | `JwtTokenService` | None | Public | JWKS discovery under `/v1/auth` path |
+| `GET` | `/v1/auth/public-key` | `JwtTokenService` | None | Public | RSA Public Key (X.509 SPKI Base64) for JWT verification |
+| `GET` | `/v1/auth/revoked-tokens` | `TokenRevocationService` | None | Public | List of active revoked token JTIs (cache synchronization) |
+| `GET` | `/v1/auth/check-revocation` | `TokenRevocationService` | None | Public | Check revocation status of a specific JTI |
+| `GET` | `/v1/auth/verify` | `JwtAuthInterceptor` | Yes (Bearer/Cookie)| All | ForwardAuth endpoint returning identity headers |
 
 ## 5. Project structure
 ```
@@ -303,8 +303,7 @@ Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) e
 │   │   │       │       ├── UserIdentityResolver.java
 │   │   │       │       └── UserProfileServiceImpl.java
 │   │   │       ├── util/
-│   │   │       │   ├── ClientCodeGenerator.java    # Base62 7-character code generator
-│   │   │       │   └── PasswordHashGenerator.java  # Dev hashing utility
+│   │   │       │   └── ClientCodeGenerator.java    # Base62 7-character code generator
 │   │   │       ├── validation/
 │   │   │       │   ├── FrenchLicensePlate.java          # French license plate validation annotation
 │   │   │       │   ├── FrenchLicensePlateValidator.java # SIV/FNI format validator & normalizer
@@ -338,8 +337,7 @@ Toutes les routes sont supportées à la fois sur le chemin direct (`/v1/...`) e
 │       │       │   ├── LoyaltyCardIdentificationServiceTest.java
 │       │       │   └── UserProfileServiceTest.java
 │       │       ├── util/
-│       │       │   ├── ClientCodeGeneratorTest.java
-│       │       │   └── PasswordHashGeneratorTest.java
+│       │       │   └── ClientCodeGeneratorTest.java
 │       │       ├── validation/
 │       │       │   ├── FrenchLicensePlateValidatorTest.java
 │       │       │   ├── MinAgeValidatorTest.java
