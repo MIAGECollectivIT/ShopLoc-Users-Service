@@ -75,7 +75,7 @@ public class OpenApiConfig {
     return new OpenAPI()
         .servers(
             List.of(
-                new Server().url("/").description("Direct / Local (Défaut)"),
+                new Server().url("/").description("Direct / Local (Default)"),
                 new Server().url("/api").description("Traefik API Gateway (WAN)")))
         .info(
             new Info()
