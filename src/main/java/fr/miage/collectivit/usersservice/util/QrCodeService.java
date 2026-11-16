@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@SuppressWarnings("PMD.GuardLogStatement")
 public class QrCodeService {
 
   private static final int DEFAULT_SIZE = 220;
@@ -32,7 +33,9 @@ public class QrCodeService {
       MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
       return pngOutputStream.toByteArray();
     } catch (WriterException | IOException e) {
-      log.error("Failed to generate QR code for content {}: {}", content, e.getMessage());
+      if (log.isErrorEnabled()) {
+        log.error("Failed to generate QR code for content {}: {}", content, e.getMessage());
+      }
       throw new IllegalStateException("Failed to generate QR code image", e);
     }
   }

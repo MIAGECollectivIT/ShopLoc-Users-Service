@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-@SuppressWarnings({"PMD.GuardLogStatement", "PMD.LawOfDemeter"})
+@SuppressWarnings({"PMD.GuardLogStatement", "PMD.LawOfDemeter", "PMD.UseObjectForClearerAPI"})
 public class PhysicalCardEmailService {
 
   private final ObjectProvider<JavaMailSender> mailSenderProvider;
