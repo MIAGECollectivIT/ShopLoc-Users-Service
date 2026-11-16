@@ -65,6 +65,7 @@ public class UserProfileController {
   private static final String HEADER_USER_ID = "X-User-Id";
   private static final String HEADER_USER_EMAIL = "X-User-Email";
   private static final String ROLE_ADMIN = "ADMIN";
+  private static final String ROLE_SERVICE = "SERVICE";
 
   private final UserProfileService userProfileService;
 
@@ -213,7 +214,7 @@ public class UserProfileController {
       return;
     }
 
-    if (ROLE_ADMIN.equalsIgnoreCase(role)) {
+    if (ROLE_ADMIN.equalsIgnoreCase(role) || ROLE_SERVICE.equalsIgnoreCase(role)) {
       return;
     }
 
@@ -232,7 +233,7 @@ public class UserProfileController {
       return;
     }
     String role = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ROLE);
-    if (ROLE_ADMIN.equalsIgnoreCase(role)) {
+    if (ROLE_ADMIN.equalsIgnoreCase(role) || ROLE_SERVICE.equalsIgnoreCase(role)) {
       return;
     }
 
