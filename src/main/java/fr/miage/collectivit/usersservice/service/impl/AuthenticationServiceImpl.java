@@ -8,6 +8,7 @@ import fr.miage.collectivit.usersservice.dto.UserRegistrationRequest;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
+import fr.miage.collectivit.usersservice.event.UserRegisteredEvent;
 import fr.miage.collectivit.usersservice.exception.AccountLockedException;
 import fr.miage.collectivit.usersservice.exception.EmailAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
@@ -19,7 +20,9 @@ import fr.miage.collectivit.usersservice.validation.FrenchLicensePlateValidator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
   private final ClientCodeGenerator clientCodeGenerator;
   private final TransactionTemplate transactionTemplate;
   private final JwtTokenService jwtTokenService;
+  private final ApplicationEventPublisher eventPublisher;
   private final int maxFailedAttempts;
   private final long lockoutMinutes;
 
@@ -47,11 +51,33 @@ public class AuthenticationServiceImpl implements AuthenticationService {
       JwtTokenService jwtTokenService,
       @Value("${application.security.lockout.max-attempts:5}") int maxFailedAttempts,
       @Value("${application.security.lockout.lockout-minutes:15}") long lockoutMinutes) {
+    this(
+        userRepository,
+        passwordEncoder,
+        clientCodeGenerator,
+        transactionTemplate,
+        jwtTokenService,
+        null,
+        maxFailedAttempts,
+        lockoutMinutes);
+  }
+
+  @Autowired
+  public AuthenticationServiceImpl(
+      UserRepository userRepository,
+      PasswordEncoder passwordEncoder,
+      ClientCodeGenerator clientCodeGenerator,
+      TransactionTemplate transactionTemplate,
+      JwtTokenService jwtTokenService,
+      ApplicationEventPublisher eventPublisher,
+      @Value("${application.security.lockout.max-attempts:5}") int maxFailedAttempts,
+      @Value("${application.security.lockout.lockout-minutes:15}") long lockoutMinutes) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.clientCodeGenerator = clientCodeGenerator;
     this.transactionTemplate = transactionTemplate;
     this.jwtTokenService = jwtTokenService;
+    this.eventPublisher = eventPublisher;
     this.maxFailedAttempts = maxFailedAttempts;
     this.lockoutMinutes = lockoutMinutes;
   }
@@ -68,6 +94,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     User savedUser =
         persistWithClientCodeRetry(request, normalizedEmail, hashedPassword, normalizedPlates);
+
+    if (eventPublisher != null) {
+      eventPublisher.publishEvent(
+          new UserRegisteredEvent(savedUser, savedUser.getPickupLocation()));
+    }
+
     return UserResponse.fromEntity(savedUser);
   }
 
