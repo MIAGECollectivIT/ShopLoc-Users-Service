@@ -1,8 +1,9 @@
 package fr.miage.collectivit.usersservice.service;
 
-import fr.miage.collectivit.usersservice.dto.UserResponse;
+import fr.miage.collectivit.usersservice.dto.CustomerIdentificationResponse;
 
+/** Service for identifying customer accounts from 7-character loyalty card numbers. */
 public interface LoyaltyCardIdentificationService {
 
-  UserResponse identifyByCardNumber(String cardNumber);
+  CustomerIdentificationResponse identifyByCardNumber(String cardNumber);
 }
