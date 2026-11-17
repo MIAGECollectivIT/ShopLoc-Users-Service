@@ -15,4 +15,6 @@ public interface AdminPartnerService {
   PartnerDetailResponse updatePartner(String identifier, AdminPartnerUpdateRequest request);
 
   void addStoreToPartner(String identifier, AdminAddStoreRequest request);
+
+  void removeStoreFromPartner(String identifier, Long storeId);
 }

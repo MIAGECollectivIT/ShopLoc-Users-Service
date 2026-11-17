@@ -96,6 +96,16 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
     }
   }
 
+  @Override
+  @Transactional
+  public void removeStoreFromPartner(String identifier, Long storeId) {
+    User merchant = resolveMerchant(identifier);
+    userStoreRepository.deleteByUserIdAndStoreId(merchant.getId(), storeId);
+    if (log.isInfoEnabled()) {
+      log.info("Removed store {} from partner {}", storeId, merchant.getId());
+    }
+  }
+
   private User resolveMerchant(String identifier) {
     User user = UserIdentityResolver.resolveUser(userRepository, identifier, identifier);
     if (user.getRole() != UserRole.MERCHANT) {

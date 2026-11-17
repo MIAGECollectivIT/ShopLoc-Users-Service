@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,6 +46,7 @@ public class AdminPartnerController {
   private static final String ROLE_ADMIN = "ADMIN";
   private static final String OK_STATUS = "200";
   private static final String CREATED_STATUS = "201";
+  private static final String NO_CONTENT_STATUS = "204";
   private static final String BAD_REQUEST_STATUS = "400";
   private static final String UNAUTHORIZED_STATUS = "401";
   private static final String FORBIDDEN_STATUS = "403";
@@ -206,6 +208,44 @@ public class AdminPartnerController {
     checkAdminRole(request);
     adminPartnerService.addStoreToPartner(id, requestBody);
     return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+  @DeleteMapping("/{id}/stores/{storeId}")
+  @Operation(
+      summary = "Remove store from partner",
+      description = "Disassociates an existing store from a partner merchant",
+      security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = NO_CONTENT_STATUS,
+        description = "Store removed successfully from partner"),
+    @ApiResponse(
+        responseCode = UNAUTHORIZED_STATUS,
+        description = "Unauthorized - Missing or invalid authentication token",
+        content = @Content),
+    @ApiResponse(
+        responseCode = FORBIDDEN_STATUS,
+        description = "Forbidden - Operation restricted to administrators",
+        content = @Content),
+    @ApiResponse(
+        responseCode = NOT_FOUND_STATUS,
+        description = "Partner merchant not found",
+        content = @Content)
+  })
+  public ResponseEntity<Void> removeStoreFromPartner(
+      @Parameter(
+              description = "Partner internal ID, public UUID, or email address",
+              example = "1",
+              required = true)
+          @PathVariable("id")
+          String id,
+      @Parameter(description = "Store identifier to remove", example = "1", required = true)
+          @PathVariable("storeId")
+          Long storeId,
+      HttpServletRequest request) {
+    checkAdminRole(request);
+    adminPartnerService.removeStoreFromPartner(id, storeId);
+    return ResponseEntity.noContent().build();
   }
 
   private void checkAdminRole(HttpServletRequest request) {
