@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("PMD.TooManyMethods")
 public class AdminPartnerServiceImpl implements AdminPartnerService {
 
   private static final int DEFAULT_LIMIT = 20;
