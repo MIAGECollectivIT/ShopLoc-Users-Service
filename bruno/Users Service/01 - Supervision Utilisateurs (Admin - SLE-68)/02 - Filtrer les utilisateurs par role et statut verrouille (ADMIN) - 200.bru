@@ -1,0 +1,31 @@
+meta {
+  name: 02 - Filtrer les utilisateurs par role et statut verrouille (ADMIN) - 200
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/v1/admin/users?role=CLIENT&isLocked=false&page=0&size=10
+  body: none
+  auth: bearer
+}
+
+params:query {
+  role: CLIENT
+  isLocked: false
+  page: 0
+  size: 10
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 200
+  res.body.content: isDefined
+}

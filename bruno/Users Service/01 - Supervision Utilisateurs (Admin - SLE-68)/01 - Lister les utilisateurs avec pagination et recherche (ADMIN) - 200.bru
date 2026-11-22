@@ -1,0 +1,37 @@
+meta {
+  name: 01 - Lister les utilisateurs avec pagination et recherche (ADMIN) - 200
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v1/admin/users?page=0&size=10
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 0
+  size: 10
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+script:post-response {
+  if (res.status === 200 && res.body && res.body.content && res.body.content.length > 0) {
+    bru.setEnvVar("userId", res.body.content[0].id);
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.content: isDefined
+  res.body.page: eq 0
+  res.body.size: eq 10
+}

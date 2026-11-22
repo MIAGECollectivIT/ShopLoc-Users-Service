@@ -1,0 +1,25 @@
+meta {
+  name: 05 - Deverrouiller un compte utilisateur (ADMIN) - 200
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/v1/admin/users/{{userId}}/unlock
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{userId}}
+  res.body.isLocked: eq false
+}
