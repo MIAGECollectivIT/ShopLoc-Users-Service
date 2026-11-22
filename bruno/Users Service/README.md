@@ -48,3 +48,4 @@ bruno/Users Service/
 > ```bash
 > git update-index --skip-worktree "bruno/Users Service/00 - Authentification/"*
 > ```
+
