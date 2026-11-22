@@ -1,0 +1,24 @@
+meta {
+  name: 06 - Rejet acces supervision par role CLIENT - 403
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/v1/admin/users
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{clientToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 403
+}
+

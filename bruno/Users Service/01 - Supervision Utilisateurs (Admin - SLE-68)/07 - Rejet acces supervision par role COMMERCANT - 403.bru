@@ -1,0 +1,24 @@
+meta {
+  name: 07 - Rejet acces supervision par role COMMERCANT - 403
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/v1/admin/users
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{merchantToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 403
+}
+

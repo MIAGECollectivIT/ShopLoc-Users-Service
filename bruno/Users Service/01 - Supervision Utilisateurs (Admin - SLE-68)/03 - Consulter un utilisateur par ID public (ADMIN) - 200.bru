@@ -1,0 +1,26 @@
+meta {
+  name: 03 - Consulter un utilisateur par ID public (ADMIN) - 200
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/v1/admin/users/{{userId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{userId}}
+  res.body.email: isDefined
+}
+

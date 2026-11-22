@@ -14,12 +14,18 @@ import lombok.Builder;
 @Builder
 @Schema(description = "Detailed representation of a ShopLoc user profile")
 public record UserResponse(
+    @Schema(description = "Numeric primary key identifier of the user", example = "1")
+        Long numericId,
     @Schema(
             description = "Public UUID identifier of the user",
             example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
         UUID id,
     @Schema(description = "User email address", example = "alice.dupont@example.com") String email,
     @Schema(description = "User role on the platform", example = "CLIENT") UserRole role,
+    @Schema(
+            description = "Whether the account is currently locked due to failed attempts",
+            example = "false")
+        Boolean isLocked,
     @Schema(description = "First name", example = "Alice") String firstName,
     @Schema(description = "Last name", example = "Dupont") String lastName,
     @Schema(description = "ISO-formatted birth date", example = "1995-04-20") LocalDate birthDate,
@@ -55,9 +61,11 @@ public record UserResponse(
     }
 
     return UserResponse.builder()
+        .numericId(user.getId())
         .id(user.getPublicId())
         .email(user.getEmail())
         .role(user.getRole())
+        .isLocked(user.isLocked())
         .firstName(user.getFirstName())
         .lastName(user.getLastName())
         .birthDate(user.getBirthDate())
