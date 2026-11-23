@@ -71,31 +71,34 @@ class AdminPartnerServiceTest {
     List<PartnerResponse> partners = adminPartnerService.getPartners(null, 20);
 
     assertThat(partners).hasSize(1);
-    assertThat(partners.getFirst().id()).isEqualTo(1L);
+    assertThat(partners.getFirst().publicId()).isEqualTo(publicId);
     assertThat(partners.getFirst().existingStoresCount()).isEqualTo(3);
   }
 
   @Test
   void shouldGetPartnerDetailsWhenFound() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(sampleMerchant));
+    UUID storeUid1 = UUID.randomUUID();
+    UUID storeUid2 = UUID.randomUUID();
+    when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
     when(userStoreRepository.findByUserId(1L))
         .thenReturn(
             List.of(
-                UserStore.builder().id(100L).userId(1L).storeId(42L).build(),
-                UserStore.builder().id(101L).userId(1L).storeId(84L).build()));
+                UserStore.builder().id(100L).userId(1L).storeUid(storeUid1).build(),
+                UserStore.builder().id(101L).userId(1L).storeUid(storeUid2).build()));
 
-    PartnerDetailResponse details = adminPartnerService.getPartnerDetails("1");
+    PartnerDetailResponse details = adminPartnerService.getPartnerDetails(publicId);
 
-    assertThat(details.id()).isEqualTo(1L);
+    assertThat(details.publicId()).isEqualTo(publicId);
     assertThat(details.email()).isEqualTo("partner@example.com");
-    assertThat(details.storeIds()).containsExactly(42L, 84L);
+    assertThat(details.storeUids()).containsExactly(storeUid1, storeUid2);
   }
 
   @Test
   void shouldThrowWhenPartnerNotFound() {
-    when(userRepository.findById(999L)).thenReturn(Optional.empty());
+    UUID unknownId = UUID.randomUUID();
+    when(userRepository.findByPublicId(unknownId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> adminPartnerService.getPartnerDetails("999"))
+    assertThatThrownBy(() -> adminPartnerService.getPartnerDetails(unknownId))
         .isInstanceOf(UserNotFoundException.class);
   }
 
@@ -108,11 +111,11 @@ class AdminPartnerServiceTest {
             .birthDate(LocalDate.of(1982, 3, 10))
             .build();
 
-    when(userRepository.findById(1L)).thenReturn(Optional.of(sampleMerchant));
+    when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(userStoreRepository.findByUserId(1L)).thenReturn(List.of());
 
-    PartnerDetailResponse updated = adminPartnerService.updatePartner("1", request);
+    PartnerDetailResponse updated = adminPartnerService.updatePartner(publicId, request);
 
     assertThat(updated.firstName()).isEqualTo("Marc");
     assertThat(updated.lastName()).isEqualTo("Durand");
@@ -122,32 +125,35 @@ class AdminPartnerServiceTest {
 
   @Test
   void shouldAddStoreToPartnerWhenNotAlreadyLinked() {
-    AdminAddStoreRequest request = new AdminAddStoreRequest(55L);
-    when(userRepository.findById(1L)).thenReturn(Optional.of(sampleMerchant));
-    when(userStoreRepository.existsByUserIdAndStoreId(1L, 55L)).thenReturn(false);
+    UUID storeUid = UUID.randomUUID();
+    AdminAddStoreRequest request = new AdminAddStoreRequest(storeUid);
+    when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
+    when(userStoreRepository.existsByUserIdAndStoreUid(1L, storeUid)).thenReturn(false);
 
-    adminPartnerService.addStoreToPartner("1", request);
+    adminPartnerService.addStoreToPartner(publicId, request);
 
     verify(userStoreRepository).save(any(UserStore.class));
   }
 
   @Test
   void shouldNotDuplicateStoreLinkWhenAlreadyExists() {
-    AdminAddStoreRequest request = new AdminAddStoreRequest(55L);
-    when(userRepository.findById(1L)).thenReturn(Optional.of(sampleMerchant));
-    when(userStoreRepository.existsByUserIdAndStoreId(1L, 55L)).thenReturn(true);
+    UUID storeUid = UUID.randomUUID();
+    AdminAddStoreRequest request = new AdminAddStoreRequest(storeUid);
+    when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
+    when(userStoreRepository.existsByUserIdAndStoreUid(1L, storeUid)).thenReturn(true);
 
-    adminPartnerService.addStoreToPartner("1", request);
+    adminPartnerService.addStoreToPartner(publicId, request);
 
     verify(userStoreRepository, never()).save(any(UserStore.class));
   }
 
   @Test
   void shouldRemoveStoreFromPartner() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(sampleMerchant));
+    UUID storeUid = UUID.randomUUID();
+    when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
 
-    adminPartnerService.removeStoreFromPartner("1", 55L);
+    adminPartnerService.removeStoreFromPartner(publicId, storeUid);
 
-    verify(userStoreRepository).deleteByUserIdAndStoreId(1L, 55L);
+    verify(userStoreRepository).deleteByUserIdAndStoreUid(1L, storeUid);
   }
 }

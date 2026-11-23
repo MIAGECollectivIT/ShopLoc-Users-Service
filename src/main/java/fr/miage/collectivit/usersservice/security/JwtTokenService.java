@@ -145,7 +145,6 @@ public class JwtTokenService {
             .issuedAt(now)
             .expiration(exp)
             .claim("userId", user.getPublicId().toString())
-            .claim("dbId", user.getId())
             .claim("email", user.getEmail())
             .claim("role", roleName)
             .claim("firstName", user.getFirstName())

@@ -89,7 +89,7 @@ class AdminUserServiceTest {
   void shouldGetUserByIdSuccessfully() {
     when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleUser));
 
-    UserResponse response = adminUserService.getUserById(publicId.toString());
+    UserResponse response = adminUserService.getUserById(publicId);
 
     assertThat(response.id()).isEqualTo(publicId);
     assertThat(response.email()).isEqualTo("alice@example.com");
@@ -99,7 +99,7 @@ class AdminUserServiceTest {
   void shouldThrowWhenUserNotFound() {
     when(userRepository.findByPublicId(publicId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> adminUserService.getUserById(publicId.toString()))
+    assertThatThrownBy(() -> adminUserService.getUserById(publicId))
         .isInstanceOf(UserNotFoundException.class);
   }
 
@@ -115,7 +115,7 @@ class AdminUserServiceTest {
             .email("alice.new@example.com")
             .build();
 
-    UserResponse response = adminUserService.updateUser(publicId.toString(), updateRequest);
+    UserResponse response = adminUserService.updateUser(publicId, updateRequest);
 
     assertThat(response.firstName()).isEqualTo("Alice Modifiée");
     assertThat(response.lastName()).isEqualTo("Durand");
@@ -158,7 +158,7 @@ class AdminUserServiceTest {
             .role(UserRole.MERCHANT)
             .build();
 
-    UserResponse response = adminUserService.updateUser(publicId.toString(), updateRequest);
+    UserResponse response = adminUserService.updateUser(publicId, updateRequest);
 
     assertThat(response.role()).isEqualTo(UserRole.MERCHANT);
     verify(entityManager).flush();
@@ -173,7 +173,7 @@ class AdminUserServiceTest {
     when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleUser));
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    UserResponse response = adminUserService.unlockUser(publicId.toString());
+    UserResponse response = adminUserService.unlockUser(publicId);
 
     assertThat(sampleUser.getLockedUntil()).isNull();
     assertThat(sampleUser.getFailedLoginAttempts()).isZero();

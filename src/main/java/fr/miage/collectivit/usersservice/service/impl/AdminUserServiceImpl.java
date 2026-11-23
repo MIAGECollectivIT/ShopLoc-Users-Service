@@ -50,14 +50,14 @@ public class AdminUserServiceImpl implements AdminUserService {
 
   @Override
   @Transactional(readOnly = true)
-  public UserResponse getUserById(String id) {
+  public UserResponse getUserById(UUID id) {
     User user = findUserOrThrow(id);
     return UserResponse.fromEntity(user);
   }
 
   @Override
   @Transactional
-  public UserResponse updateUser(String id, AdminUserUpdateRequest request) {
+  public UserResponse updateUser(UUID id, AdminUserUpdateRequest request) {
     User user = findUserOrThrow(id);
     applyProfileUpdates(user, request);
 
@@ -104,7 +104,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
   @Override
   @Transactional
-  public UserResponse unlockUser(String id) {
+  public UserResponse unlockUser(UUID id) {
     User user = findUserOrThrow(id);
     user.resetLockout();
     User saved = userRepository.save(user);
@@ -184,27 +184,10 @@ public class AdminUserServiceImpl implements AdminUserService {
     return code;
   }
 
-  private User findUserOrThrow(String identifier) {
-    if (identifier == null || identifier.isBlank()) {
+  private User findUserOrThrow(UUID id) {
+    if (id == null) {
       throw new UserNotFoundException("User identifier must not be empty");
     }
-    String trimmed = identifier.trim();
-    try {
-      UUID publicId = UUID.fromString(trimmed);
-      return userRepository
-          .findByPublicId(publicId)
-          .orElseThrow(() -> new UserNotFoundException("User not found with publicId: " + trimmed));
-    } catch (IllegalArgumentException notUuid) {
-      try {
-        Long numericId = Long.parseLong(trimmed);
-        return userRepository
-            .findById(numericId)
-            .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + trimmed));
-      } catch (NumberFormatException notNumeric) {
-        return userRepository
-            .findByEmail(trimmed.toLowerCase(ROOT))
-            .orElseThrow(() -> new UserNotFoundException("User not found with email: " + trimmed));
-      }
-    }
+    return userRepository.findByPublicId(id).orElseThrow(() -> new UserNotFoundException(id));
   }
 }

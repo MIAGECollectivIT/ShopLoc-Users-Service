@@ -71,10 +71,10 @@ class AdminPartnerControllerTest {
 
   @Test
   void shouldListPartnersWhenAdminRoleProvided() throws Exception {
+    UUID publicId = UUID.randomUUID();
     PartnerResponse partner =
         PartnerResponse.builder()
-            .id(1L)
-            .publicId(UUID.randomUUID())
+            .publicId(publicId)
             .name("Boulangerie Paul")
             .email("paul@example.com")
             .companyName("Boulangerie Paul")
@@ -88,7 +88,8 @@ class AdminPartnerControllerTest {
         .perform(
             get("/api/v1/admin/partners").requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].id").value(1))
+        .andExpect(jsonPath("$[0].id").doesNotExist())
+        .andExpect(jsonPath("$[0].publicId").value(publicId.toString()))
         .andExpect(jsonPath("$[0].email").value("paul@example.com"))
         .andExpect(jsonPath("$[0].existingStoresCount").value(1));
   }
@@ -113,7 +114,7 @@ class AdminPartnerControllerTest {
   void shouldReturn403WhenGettingPartnerDetailsWithoutAdminRole() throws Exception {
     mockMvc
         .perform(
-            get("/api/v1/admin/partners/1")
+            get("/api/v1/admin/partners/" + UUID.randomUUID())
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "MERCHANT"))
         .andExpect(status().isForbidden());
   }
@@ -121,9 +122,10 @@ class AdminPartnerControllerTest {
   @Test
   void shouldGetPartnerDetailsWhenAdmin() throws Exception {
     UUID publicId = UUID.randomUUID();
+    UUID storeUid1 = UUID.randomUUID();
+    UUID storeUid2 = UUID.randomUUID();
     PartnerDetailResponse detail =
         PartnerDetailResponse.builder()
-            .id(1L)
             .publicId(publicId)
             .email("paul@example.com")
             .role(UserRole.MERCHANT)
@@ -131,33 +133,44 @@ class AdminPartnerControllerTest {
             .lastName("Boulanger")
             .birthDate(LocalDate.of(1985, 5, 20))
             .companyName("Boulangerie Paul")
-            .storeIds(List.of(10L, 20L))
+            .storeUids(List.of(storeUid1, storeUid2))
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();
 
-    when(adminPartnerService.getPartnerDetails("1")).thenReturn(detail);
+    when(adminPartnerService.getPartnerDetails(publicId)).thenReturn(detail);
 
     mockMvc
         .perform(
-            get("/api/v1/admin/partners/1").requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+            get("/api/v1/admin/partners/" + publicId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(1))
+        .andExpect(jsonPath("$.id").doesNotExist())
+        .andExpect(jsonPath("$.publicId").value(publicId.toString()))
         .andExpect(jsonPath("$.email").value("paul@example.com"))
         .andExpect(jsonPath("$.firstName").value("Paul"))
         .andExpect(jsonPath("$.lastName").value("Boulanger"))
-        .andExpect(jsonPath("$.storeIds[0]").value(10))
-        .andExpect(jsonPath("$.storeIds[1]").value(20));
+        .andExpect(jsonPath("$.storeUids[0]").value(storeUid1.toString()))
+        .andExpect(jsonPath("$.storeUids[1]").value(storeUid2.toString()));
+  }
+
+  @Test
+  void shouldReturn400WhenGettingPartnerDetailsWithNonUuidId() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/admin/partners/1").requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
   void shouldReturn404WhenPartnerNotFound() throws Exception {
-    when(adminPartnerService.getPartnerDetails("999"))
+    UUID unknownId = UUID.randomUUID();
+    when(adminPartnerService.getPartnerDetails(unknownId))
         .thenThrow(new UserNotFoundException("Partner not found"));
 
     mockMvc
         .perform(
-            get("/api/v1/admin/partners/999")
+            get("/api/v1/admin/partners/" + unknownId)
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isNotFound());
   }
@@ -173,7 +186,7 @@ class AdminPartnerControllerTest {
 
     mockMvc
         .perform(
-            put("/api/v1/admin/partners/1")
+            put("/api/v1/admin/partners/" + UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "MERCHANT"))
@@ -182,6 +195,7 @@ class AdminPartnerControllerTest {
 
   @Test
   void shouldUpdatePartnerWhenValidPayloadAndAdmin() throws Exception {
+    UUID publicId = UUID.randomUUID();
     AdminPartnerUpdateRequest request =
         AdminPartnerUpdateRequest.builder()
             .firstName("Pierre")
@@ -191,29 +205,30 @@ class AdminPartnerControllerTest {
 
     PartnerDetailResponse response =
         PartnerDetailResponse.builder()
-            .id(1L)
-            .publicId(UUID.randomUUID())
+            .publicId(publicId)
             .email("pierre@example.com")
             .role(UserRole.MERCHANT)
             .firstName("Pierre")
             .lastName("Martin")
             .birthDate(LocalDate.of(1980, 1, 1))
             .companyName("Boutique Martin")
-            .storeIds(List.of())
+            .storeUids(List.of())
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();
 
-    when(adminPartnerService.updatePartner(eq("1"), any(AdminPartnerUpdateRequest.class)))
+    when(adminPartnerService.updatePartner(eq(publicId), any(AdminPartnerUpdateRequest.class)))
         .thenReturn(response);
 
     mockMvc
         .perform(
-            put("/api/v1/admin/partners/1")
+            put("/api/v1/admin/partners/" + publicId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").doesNotExist())
+        .andExpect(jsonPath("$.publicId").value(publicId.toString()))
         .andExpect(jsonPath("$.firstName").value("Pierre"))
         .andExpect(jsonPath("$.lastName").value("Martin"));
   }
@@ -229,7 +244,7 @@ class AdminPartnerControllerTest {
 
     mockMvc
         .perform(
-            put("/api/v1/admin/partners/1")
+            put("/api/v1/admin/partners/" + UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest))
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
@@ -238,51 +253,64 @@ class AdminPartnerControllerTest {
 
   @Test
   void shouldAddStoreToPartnerWhenAdmin() throws Exception {
-    AdminAddStoreRequest request = new AdminAddStoreRequest(42L);
+    UUID partnerId = UUID.randomUUID();
+    UUID storeUid = UUID.randomUUID();
+    AdminAddStoreRequest request = new AdminAddStoreRequest(storeUid);
     doNothing()
         .when(adminPartnerService)
-        .addStoreToPartner(eq("1"), any(AdminAddStoreRequest.class));
+        .addStoreToPartner(eq(partnerId), any(AdminAddStoreRequest.class));
 
     mockMvc
         .perform(
-            post("/api/v1/admin/partners/1/stores")
+            post("/api/v1/admin/partners/" + partnerId + "/stores")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isCreated());
 
-    verify(adminPartnerService).addStoreToPartner(eq("1"), any(AdminAddStoreRequest.class));
+    verify(adminPartnerService).addStoreToPartner(eq(partnerId), any(AdminAddStoreRequest.class));
   }
 
   @Test
-  void shouldReturn400WhenAddingStoreWithNullStoreId() throws Exception {
+  void shouldReturn400WhenAddingStoreWithNullStoreUid() throws Exception {
     mockMvc
         .perform(
-            post("/api/v1/admin/partners/1/stores")
+            post("/api/v1/admin/partners/" + UUID.randomUUID() + "/stores")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"storeId\": null}")
+                .content("{\"storeUid\": null}")
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isBadRequest());
   }
 
   @Test
   void shouldRemoveStoreFromPartnerWhenAdmin() throws Exception {
-    doNothing().when(adminPartnerService).removeStoreFromPartner("1", 42L);
+    UUID partnerId = UUID.randomUUID();
+    UUID storeUid = UUID.randomUUID();
+    doNothing().when(adminPartnerService).removeStoreFromPartner(partnerId, storeUid);
 
     mockMvc
         .perform(
-            delete("/api/v1/admin/partners/1/stores/42")
+            delete("/api/v1/admin/partners/" + partnerId + "/stores/" + storeUid)
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isNoContent());
 
-    verify(adminPartnerService).removeStoreFromPartner("1", 42L);
+    verify(adminPartnerService).removeStoreFromPartner(partnerId, storeUid);
+  }
+
+  @Test
+  void shouldReturn400WhenRemovingStoreWithNonUuidStoreUid() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/partners/" + UUID.randomUUID() + "/stores/42")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
   void shouldReturn403WhenRemovingStoreWithoutAdminRole() throws Exception {
     mockMvc
         .perform(
-            delete("/api/v1/admin/partners/1/stores/42")
+            delete("/api/v1/admin/partners/" + UUID.randomUUID() + "/stores/" + UUID.randomUUID())
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "MERCHANT"))
         .andExpect(status().isForbidden());
   }

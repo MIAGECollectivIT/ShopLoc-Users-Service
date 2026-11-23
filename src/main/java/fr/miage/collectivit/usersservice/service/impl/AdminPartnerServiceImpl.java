@@ -14,6 +14,8 @@ import fr.miage.collectivit.usersservice.service.AdminPartnerService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -57,66 +59,77 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
 
   @Override
   @Transactional(readOnly = true)
-  public PartnerDetailResponse getPartnerDetails(String identifier) {
-    User merchant = resolveMerchant(identifier);
-    List<Long> storeIds = fetchStoreIds(merchant.getId());
-    return mapToDetailResponse(merchant, storeIds);
+  public PartnerDetailResponse getPartnerDetails(UUID id) {
+    User merchant = resolveMerchant(id);
+    List<UUID> storeUids = fetchStoreUids(merchant.getId());
+    return mapToDetailResponse(merchant, storeUids);
   }
 
   @Override
   @Transactional
-  public PartnerDetailResponse updatePartner(String identifier, AdminPartnerUpdateRequest request) {
-    User merchant = resolveMerchant(identifier);
+  public PartnerDetailResponse updatePartner(UUID id, AdminPartnerUpdateRequest request) {
+    User merchant = resolveMerchant(id);
 
     merchant.setFirstName(request.firstName().trim());
     merchant.setLastName(request.lastName().trim());
     merchant.setBirthDate(request.birthDate());
 
     User saved = userRepository.save(merchant);
-    List<Long> storeIds = fetchStoreIds(saved.getId());
-    return mapToDetailResponse(saved, storeIds);
+    List<UUID> storeUids = fetchStoreUids(saved.getId());
+    return mapToDetailResponse(saved, storeUids);
   }
 
   @Override
   @Transactional
-  public void addStoreToPartner(String identifier, AdminAddStoreRequest request) {
-    User merchant = resolveMerchant(identifier);
-    Long storeId = request.storeId();
+  public void addStoreToPartner(UUID id, AdminAddStoreRequest request) {
+    User merchant = resolveMerchant(id);
+    UUID storeUid = request.storeUid();
 
-    if (userStoreRepository.existsByUserIdAndStoreId(merchant.getId(), storeId)) {
+    if (userStoreRepository.existsByUserIdAndStoreUid(merchant.getId(), storeUid)) {
       if (log.isDebugEnabled()) {
-        log.debug("Store {} is already associated with partner {}", storeId, merchant.getId());
+        log.debug(
+            "Store {} is already associated with partner {}", storeUid, merchant.getPublicId());
       }
       return;
     }
 
-    UserStore link = UserStore.builder().userId(merchant.getId()).storeId(storeId).build();
+    UserStore link = UserStore.builder().userId(merchant.getId()).storeUid(storeUid).build();
     userStoreRepository.save(link);
     if (log.isInfoEnabled()) {
-      log.info("Linked store {} to partner {}", storeId, merchant.getId());
+      log.info("Linked store {} to partner {}", storeUid, merchant.getPublicId());
     }
   }
 
   @Override
   @Transactional
-  public void removeStoreFromPartner(String identifier, Long storeId) {
-    User merchant = resolveMerchant(identifier);
-    userStoreRepository.deleteByUserIdAndStoreId(merchant.getId(), storeId);
+  public void removeStoreFromPartner(UUID id, UUID storeUid) {
+    User merchant = resolveMerchant(id);
+    userStoreRepository.deleteByUserIdAndStoreUid(merchant.getId(), storeUid);
     if (log.isInfoEnabled()) {
-      log.info("Removed store {} from partner {}", storeId, merchant.getId());
+      log.info("Removed store {} from partner {}", storeUid, merchant.getPublicId());
     }
   }
 
-  private User resolveMerchant(String identifier) {
-    User user = UserIdentityResolver.resolveUser(userRepository, identifier, identifier);
+  private User resolveMerchant(UUID id) {
+    if (id == null) {
+      throw new UserNotFoundException("Partner merchant identifier must not be empty");
+    }
+    User user =
+        userRepository
+            .findByPublicId(id)
+            .orElseThrow(
+                () -> new UserNotFoundException("Partner merchant not found with publicId: " + id));
     if (user.getRole() != UserRole.MERCHANT) {
-      throw new UserNotFoundException("Partner merchant not found for identifier: " + identifier);
+      throw new UserNotFoundException("Partner merchant not found with publicId: " + id);
     }
     return user;
   }
 
-  private List<Long> fetchStoreIds(Long userId) {
-    return userStoreRepository.findByUserId(userId).stream().map(UserStore::getStoreId).toList();
+  private List<UUID> fetchStoreUids(Long userId) {
+    return userStoreRepository.findByUserId(userId).stream()
+        .map(UserStore::getStoreUid)
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   private int clampLimit(int limit) {
@@ -143,7 +156,6 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
             ? u.getPickupLocation()
             : "Boutique " + u.getLastName();
     return PartnerResponse.builder()
-        .id(u.getId())
         .publicId(u.getPublicId())
         .name(fullName)
         .email(u.getEmail())
@@ -153,13 +165,12 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
         .build();
   }
 
-  private PartnerDetailResponse mapToDetailResponse(User u, List<Long> storeIds) {
+  private PartnerDetailResponse mapToDetailResponse(User u, List<UUID> storeUids) {
     String companyName =
         (u.getPickupLocation() != null && !u.getPickupLocation().isBlank())
             ? u.getPickupLocation()
             : "Boutique " + u.getLastName();
     return PartnerDetailResponse.builder()
-        .id(u.getId())
         .publicId(u.getPublicId())
         .email(u.getEmail())
         .role(u.getRole())
@@ -167,7 +178,7 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
         .lastName(u.getLastName())
         .birthDate(u.getBirthDate())
         .companyName(companyName)
-        .storeIds(storeIds)
+        .storeUids(storeUids)
         .createdAt(u.getCreatedAt())
         .updatedAt(u.getUpdatedAt())
         .build();

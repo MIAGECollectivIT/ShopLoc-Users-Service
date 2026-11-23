@@ -9,7 +9,6 @@ import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.exception.ForbiddenException;
 import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
-import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.security.JwtAuthInterceptor;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -163,7 +162,7 @@ public class UserProfileController {
   @GetMapping("/{userId}")
   @Operation(
       summary = "Get user profile",
-      description = "Retrieves user profile details by public user UUID or internal numeric ID",
+      description = "Retrieves user profile details by public user UUID",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(
@@ -173,6 +172,10 @@ public class UserProfileController {
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
                 schema = @Schema(implementation = UserResponse.class))),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = "Invalid user UUID format",
+        content = @Content),
     @ApiResponse(
         responseCode = NOT_FOUND_STATUS,
         description = USER_NOT_FOUND_MSG,
@@ -184,34 +187,27 @@ public class UserProfileController {
   })
   public ResponseEntity<UserResponse> getUserProfile(
       @Parameter(
-              description = "Public UUID identifier or numeric ID of the user",
+              description = "Public UUID identifier of the user",
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
-          String userId,
+          UUID userId,
       HttpServletRequest servletRequest) {
-    UserResponse userResponse;
-    try {
-      UUID publicId = UUID.fromString(userId.trim());
-      userResponse = userProfileService.getUserProfile(publicId);
-    } catch (IllegalArgumentException notUuid) {
-      userResponse = userProfileService.getUserProfileByIdentifier(userId);
-    }
-    checkUserAccess(userResponse, servletRequest);
-    return ResponseEntity.ok(userResponse);
+    checkUserAccess(userId, servletRequest);
+    return ResponseEntity.ok(userProfileService.getUserProfile(userId));
   }
 
-  public ResponseEntity<UserResponse> getUserProfile(String userId) {
+  public ResponseEntity<UserResponse> getUserProfile(UUID userId) {
     return getUserProfile(userId, null);
   }
 
-  private record CallerIdentity(String role, String userId, String email) {
+  private record CallerIdentity(String role, String userId) {
     boolean isPrivileged() {
       return ROLE_ADMIN.equalsIgnoreCase(role) || ROLE_SERVICE.equalsIgnoreCase(role);
     }
 
     boolean isMissing() {
-      return role == null && userId == null && email == null;
+      return role == null && userId == null;
     }
   }
 
@@ -221,27 +217,11 @@ public class UserProfileController {
     }
     String role = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ROLE);
     String authUserId = resolveAuthId(servletRequest.getHeader(HEADER_USER_ID), servletRequest);
-    String authEmail =
-        resolveAuthEmail(servletRequest.getHeader(HEADER_USER_EMAIL), servletRequest);
-    CallerIdentity caller = new CallerIdentity(role, authUserId, authEmail);
+    CallerIdentity caller = new CallerIdentity(role, authUserId);
     if (caller.isMissing()) {
       throw new UnauthorizedException("Authentication context is required.");
     }
     return caller;
-  }
-
-  private void checkUserAccess(UserResponse userResponse, HttpServletRequest servletRequest) {
-    if (userResponse == null) {
-      throw new UnauthorizedException("Authentication context is required.");
-    }
-    CallerIdentity caller = extractCallerIdentity(servletRequest);
-    if (caller.isPrivileged()) {
-      return;
-    }
-    if (!isSameUser(caller, userResponse.id().toString(), userResponse.email())) {
-      throw new ForbiddenException(
-          "Access denied: you are not authorized to view this user's personal details.");
-    }
   }
 
   private void checkUserAccess(UUID targetUserId, HttpServletRequest servletRequest) {
@@ -252,27 +232,19 @@ public class UserProfileController {
     if (caller.isPrivileged()) {
       return;
     }
-    if (!isTargetUser(targetUserId, caller.userId(), caller.email())) {
+    if (!isTargetUser(targetUserId, caller.userId())) {
       throw new ForbiddenException(
           "Access denied: you are not authorized to access or modify this user's resources.");
     }
   }
 
-  private boolean isSameUser(CallerIdentity caller, String id, String email) {
-    return (caller.userId() != null && caller.userId().equalsIgnoreCase(id))
-        || (caller.email() != null && caller.email().equalsIgnoreCase(email));
-  }
-
-  private boolean isTargetUser(UUID targetUserId, String authUserId, String authEmail) {
-    return (authUserId != null && authUserId.equalsIgnoreCase(targetUserId.toString()))
-        || (authEmail != null && isUserEmailMatching(targetUserId, authEmail));
-  }
-
-  private boolean isUserEmailMatching(UUID targetUserId, String authEmail) {
+  private boolean isTargetUser(UUID targetUserId, String authUserId) {
+    if (authUserId == null || authUserId.isBlank()) {
+      return false;
+    }
     try {
-      UserResponse userResponse = userProfileService.getUserProfile(targetUserId);
-      return userResponse != null && authEmail.equalsIgnoreCase(userResponse.email());
-    } catch (UserNotFoundException ignored) {
+      return UUID.fromString(authUserId.trim()).equals(targetUserId);
+    } catch (IllegalArgumentException ignored) {
       return false;
     }
   }
@@ -299,7 +271,7 @@ public class UserProfileController {
               required = true)
           @RequestBody
           UserStoreLinkRequest request) {
-    userProfileService.linkStoreToUser(request.userId(), request.storeId());
+    userProfileService.linkStoreToUser(request.userId(), request.storeUid());
     return ResponseEntity.ok().build();
   }
 

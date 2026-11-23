@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("PMD.TooManyMethods")
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.GodClass"})
 public class UserProfileServiceImpl implements UserProfileService {
 
   private static final int DEFAULT_LIMIT = 20;
@@ -44,7 +44,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Override
   @Transactional(readOnly = true)
   public UserResponse getCurrentUserProfile(String userIdHeader, String userEmailHeader) {
-    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader);
     return UserResponse.fromEntity(user);
   }
 
@@ -56,30 +56,21 @@ public class UserProfileServiceImpl implements UserProfileService {
   }
 
   @Override
-  @Transactional(readOnly = true)
-  public UserResponse getUserProfileByIdentifier(String identifier) {
-    User user = UserIdentityResolver.resolveUser(userRepository, identifier, identifier);
-    return UserResponse.fromEntity(user);
-  }
-
-  @Override
   @Transactional
-  public void linkStoreToUser(Long userId, Long storeId) {
-    if (userId == null || storeId == null) {
+  public void linkStoreToUser(UUID userId, UUID storeUid) {
+    if (userId == null || storeUid == null) {
       return;
     }
-    if (!userRepository.existsById(userId)) {
-      throw new UserNotFoundException("User not found with id: " + userId);
-    }
-    if (userStoreRepository.existsByUserIdAndStoreId(userId, storeId)) {
+    User user = findUserByPublicId(userId);
+    if (userStoreRepository.existsByUserIdAndStoreUid(user.getId(), storeUid)) {
       if (log.isDebugEnabled()) {
-        log.debug("Link already exists for userId={} and storeId={}", userId, storeId);
+        log.debug("Link already exists for userId={} and storeUid={}", userId, storeUid);
       }
       return;
     }
-    UserStore link = UserStore.builder().userId(userId).storeId(storeId).build();
+    UserStore link = UserStore.builder().userId(user.getId()).storeUid(storeUid).build();
     userStoreRepository.save(link);
-    log.info("Link recorded between user id={} and store storeId={}", userId, storeId);
+    log.info("Link recorded between user publicId={} and store storeUid={}", userId, storeUid);
   }
 
   @Override
@@ -128,7 +119,6 @@ public class UserProfileServiceImpl implements UserProfileService {
             ? u.getPickupLocation()
             : "Boutique " + u.getLastName();
     return PartnerResponse.builder()
-        .id(u.getId())
         .publicId(u.getPublicId())
         .name(fullName)
         .email(u.getEmail())
@@ -249,7 +239,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Override
   @Transactional(readOnly = true)
   public List<VehicleResponse> getCurrentUserVehicles(String userIdHeader, String userEmailHeader) {
-    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader);
     return getVehicles(user.getPublicId());
   }
 
@@ -257,7 +247,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public VehicleResponse addCurrentUserVehicle(
       String userIdHeader, String userEmailHeader, VehicleRequest request) {
-    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader);
     return addVehicle(user.getPublicId(), request);
   }
 
@@ -265,7 +255,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public VehicleResponse updateCurrentUserVehicle(
       String userIdHeader, String userEmailHeader, String vehicleId, VehicleRequest request) {
-    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader);
     return updateVehicle(user.getPublicId(), vehicleId, request);
   }
 
@@ -273,7 +263,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Transactional
   public void removeCurrentUserVehicle(
       String userIdHeader, String userEmailHeader, String vehicleId) {
-    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader, userEmailHeader);
+    User user = UserIdentityResolver.resolveUser(userRepository, userIdHeader);
     removeVehicle(user.getPublicId(), vehicleId);
   }
 

@@ -118,25 +118,46 @@ class AdminUserControllerTest {
             .updatedAt(Instant.now())
             .build();
 
-    when(adminUserService.getUserById(publicId.toString())).thenReturn(user);
+    when(adminUserService.getUserById(publicId)).thenReturn(user);
 
     mockMvc
         .perform(
             get("/api/v1/admin/users/" + publicId)
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.numericId").doesNotExist())
+        .andExpect(jsonPath("$.id").value(publicId.toString()))
         .andExpect(jsonPath("$.email").value("bob@example.com"))
         .andExpect(jsonPath("$.role").value("MERCHANT"));
   }
 
   @Test
+  void shouldReturn400WhenUserIdIsNotUuid() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/admin/users/unknown-id")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void shouldReturn400WhenUnlockingUserWithNonUuidId() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/users/123/unlock")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   void shouldReturn404WhenUserNotFound() throws Exception {
-    when(adminUserService.getUserById("unknown-id"))
+    UUID unknownId = UUID.randomUUID();
+    when(adminUserService.getUserById(unknownId))
         .thenThrow(new UserNotFoundException("User not found"));
 
     mockMvc
         .perform(
-            get("/api/v1/admin/users/unknown-id")
+            get("/api/v1/admin/users/" + unknownId)
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isNotFound());
   }
@@ -161,7 +182,7 @@ class AdminUserControllerTest {
             .role(UserRole.CLIENT)
             .build();
 
-    when(adminUserService.updateUser(eq(publicId.toString()), any(AdminUserUpdateRequest.class)))
+    when(adminUserService.updateUser(eq(publicId), any(AdminUserUpdateRequest.class)))
         .thenReturn(updatedResponse);
 
     mockMvc
@@ -188,7 +209,7 @@ class AdminUserControllerTest {
             .isLocked(false)
             .build();
 
-    when(adminUserService.unlockUser(publicId.toString())).thenReturn(unlocked);
+    when(adminUserService.unlockUser(publicId)).thenReturn(unlocked);
 
     mockMvc
         .perform(

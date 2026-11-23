@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -91,7 +92,7 @@ public class AdminPartnerController {
   @GetMapping("/{id}")
   @Operation(
       summary = "Get partner detailed profile",
-      description = "Retrieves full details of a partner merchant including associated store IDs",
+      description = "Retrieves full details of a partner merchant including associated store UUIDs",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   @ApiResponses({
     @ApiResponse(
@@ -101,6 +102,10 @@ public class AdminPartnerController {
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
                 schema = @Schema(implementation = PartnerDetailResponse.class))),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = "Invalid partner UUID format",
+        content = @Content),
     @ApiResponse(
         responseCode = UNAUTHORIZED_STATUS,
         description = "Unauthorized - Missing or invalid authentication token",
@@ -116,11 +121,11 @@ public class AdminPartnerController {
   })
   public ResponseEntity<PartnerDetailResponse> getPartnerById(
       @Parameter(
-              description = "Partner internal ID, public UUID, or email address",
-              example = "1",
+              description = "Partner public UUID",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable("id")
-          String id,
+          UUID id,
       HttpServletRequest request) {
     checkAdminRole(request);
     return ResponseEntity.ok(adminPartnerService.getPartnerDetails(id));
@@ -141,7 +146,7 @@ public class AdminPartnerController {
                 schema = @Schema(implementation = PartnerDetailResponse.class))),
     @ApiResponse(
         responseCode = BAD_REQUEST_STATUS,
-        description = "Invalid update payload",
+        description = "Invalid update payload or partner UUID format",
         content = @Content),
     @ApiResponse(
         responseCode = UNAUTHORIZED_STATUS,
@@ -158,11 +163,11 @@ public class AdminPartnerController {
   })
   public ResponseEntity<PartnerDetailResponse> updatePartner(
       @Parameter(
-              description = "Partner internal ID, public UUID, or email address",
-              example = "1",
+              description = "Partner public UUID",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable("id")
-          String id,
+          UUID id,
       @Valid @RequestBody AdminPartnerUpdateRequest requestBody,
       HttpServletRequest request) {
     checkAdminRole(request);
@@ -198,11 +203,11 @@ public class AdminPartnerController {
   })
   public ResponseEntity<Void> addStoreToPartner(
       @Parameter(
-              description = "Partner internal ID, public UUID, or email address",
-              example = "1",
+              description = "Partner public UUID",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable("id")
-          String id,
+          UUID id,
       @Valid @RequestBody AdminAddStoreRequest requestBody,
       HttpServletRequest request) {
     checkAdminRole(request);
@@ -210,7 +215,7 @@ public class AdminPartnerController {
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
-  @DeleteMapping("/{id}/stores/{storeId}")
+  @DeleteMapping("/{id}/stores/{storeUid}")
   @Operation(
       summary = "Remove store from partner",
       description = "Disassociates an existing store from a partner merchant",
@@ -219,6 +224,10 @@ public class AdminPartnerController {
     @ApiResponse(
         responseCode = NO_CONTENT_STATUS,
         description = "Store removed successfully from partner"),
+    @ApiResponse(
+        responseCode = BAD_REQUEST_STATUS,
+        description = "Invalid partner or store UUID format",
+        content = @Content),
     @ApiResponse(
         responseCode = UNAUTHORIZED_STATUS,
         description = "Unauthorized - Missing or invalid authentication token",
@@ -234,17 +243,20 @@ public class AdminPartnerController {
   })
   public ResponseEntity<Void> removeStoreFromPartner(
       @Parameter(
-              description = "Partner internal ID, public UUID, or email address",
-              example = "1",
+              description = "Partner public UUID",
+              example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable("id")
-          String id,
-      @Parameter(description = "Store identifier to remove", example = "1", required = true)
-          @PathVariable("storeId")
-          Long storeId,
+          UUID id,
+      @Parameter(
+              description = "Store public UUID to remove",
+              example = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              required = true)
+          @PathVariable("storeUid")
+          UUID storeUid,
       HttpServletRequest request) {
     checkAdminRole(request);
-    adminPartnerService.removeStoreFromPartner(id, storeId);
+    adminPartnerService.removeStoreFromPartner(id, storeUid);
     return ResponseEntity.noContent().build();
   }
 

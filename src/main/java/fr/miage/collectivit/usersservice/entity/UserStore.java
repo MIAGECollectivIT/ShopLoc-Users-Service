@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,8 +30,8 @@ public class UserStore {
   @Column(name = "user_id", nullable = false)
   private Long userId;
 
-  @Column(name = "store_id", nullable = false)
-  private Long storeId;
+  @Column(name = "store_uid")
+  private UUID storeUid;
 
   @Column(name = "created_at", nullable = false)
   @Builder.Default
