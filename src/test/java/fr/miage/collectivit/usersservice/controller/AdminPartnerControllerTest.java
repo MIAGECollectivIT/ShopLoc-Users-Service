@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -262,5 +263,27 @@ class AdminPartnerControllerTest {
                 .content("{\"storeId\": null}")
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void shouldRemoveStoreFromPartnerWhenAdmin() throws Exception {
+    doNothing().when(adminPartnerService).removeStoreFromPartner("1", 42L);
+
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/partners/1/stores/42")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN"))
+        .andExpect(status().isNoContent());
+
+    verify(adminPartnerService).removeStoreFromPartner("1", 42L);
+  }
+
+  @Test
+  void shouldReturn403WhenRemovingStoreWithoutAdminRole() throws Exception {
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/partners/1/stores/42")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "MERCHANT"))
+        .andExpect(status().isForbidden());
   }
 }

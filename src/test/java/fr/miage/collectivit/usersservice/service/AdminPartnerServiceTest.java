@@ -141,4 +141,13 @@ class AdminPartnerServiceTest {
 
     verify(userStoreRepository, never()).save(any(UserStore.class));
   }
+
+  @Test
+  void shouldRemoveStoreFromPartner() {
+    when(userRepository.findById(1L)).thenReturn(Optional.of(sampleMerchant));
+
+    adminPartnerService.removeStoreFromPartner("1", 55L);
+
+    verify(userStoreRepository).deleteByUserIdAndStoreId(1L, 55L);
+  }
 }

@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("PMD.TooManyMethods")
 public class AdminPartnerServiceImpl implements AdminPartnerService {
 
   private static final int DEFAULT_LIMIT = 20;
@@ -93,6 +94,16 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
     userStoreRepository.save(link);
     if (log.isInfoEnabled()) {
       log.info("Linked store {} to partner {}", storeId, merchant.getId());
+    }
+  }
+
+  @Override
+  @Transactional
+  public void removeStoreFromPartner(String identifier, Long storeId) {
+    User merchant = resolveMerchant(identifier);
+    userStoreRepository.deleteByUserIdAndStoreId(merchant.getId(), storeId);
+    if (log.isInfoEnabled()) {
+      log.info("Removed store {} from partner {}", storeId, merchant.getId());
     }
   }
 

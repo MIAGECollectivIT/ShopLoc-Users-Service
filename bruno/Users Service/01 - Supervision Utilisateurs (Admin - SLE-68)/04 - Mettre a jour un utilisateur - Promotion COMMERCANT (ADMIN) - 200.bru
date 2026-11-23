@@ -1,0 +1,32 @@
+meta {
+  name: 04 - Mettre a jour un utilisateur - Promotion COMMERCANT (ADMIN) - 200
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/v1/admin/users/{{userId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "role": "MERCHANT"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{userId}}
+  res.body.role: eq MERCHANT
+}
+

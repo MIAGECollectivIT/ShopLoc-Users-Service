@@ -8,6 +8,7 @@ import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.exception.ForbiddenException;
+import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.security.JwtAuthInterceptor;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
@@ -65,6 +66,7 @@ public class UserProfileController {
   private static final String HEADER_USER_ID = "X-User-Id";
   private static final String HEADER_USER_EMAIL = "X-User-Email";
   private static final String ROLE_ADMIN = "ADMIN";
+  private static final String ROLE_SERVICE = "SERVICE";
 
   private final UserProfileService userProfileService;
 
@@ -110,21 +112,23 @@ public class UserProfileController {
   }
 
   private String resolveAuthId(String headerId, HttpServletRequest servletRequest) {
-    if (headerId != null && !headerId.isBlank()) {
-      return headerId;
+    if (servletRequest != null) {
+      String jwtUserId = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ID);
+      if (jwtUserId != null && !jwtUserId.isBlank()) {
+        return jwtUserId;
+      }
     }
-    return servletRequest != null
-        ? (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ID)
-        : null;
+    return (headerId != null && !headerId.isBlank()) ? headerId : null;
   }
 
   private String resolveAuthEmail(String headerEmail, HttpServletRequest servletRequest) {
-    if (headerEmail != null && !headerEmail.isBlank()) {
-      return headerEmail;
+    if (servletRequest != null) {
+      String jwtEmail = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_EMAIL);
+      if (jwtEmail != null && !jwtEmail.isBlank()) {
+        return jwtEmail;
+      }
     }
-    return servletRequest != null
-        ? (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_EMAIL)
-        : null;
+    return (headerEmail != null && !headerEmail.isBlank()) ? headerEmail : null;
   }
 
   public ResponseEntity<UserResponse> getCurrentUserProfile(
@@ -201,57 +205,62 @@ public class UserProfileController {
     return getUserProfile(userId, null);
   }
 
-  private void checkUserAccess(UserResponse userResponse, HttpServletRequest servletRequest) {
+  private record CallerIdentity(String role, String userId, String email) {
+    boolean isPrivileged() {
+      return ROLE_ADMIN.equalsIgnoreCase(role) || ROLE_SERVICE.equalsIgnoreCase(role);
+    }
+
+    boolean isMissing() {
+      return role == null && userId == null && email == null;
+    }
+  }
+
+  private CallerIdentity extractCallerIdentity(HttpServletRequest servletRequest) {
     if (servletRequest == null) {
-      return;
+      throw new UnauthorizedException("Authentication context is required.");
     }
     String role = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ROLE);
-    String authUserId = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ID);
-    String authEmail = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_EMAIL);
+    String authUserId = resolveAuthId(servletRequest.getHeader(HEADER_USER_ID), servletRequest);
+    String authEmail =
+        resolveAuthEmail(servletRequest.getHeader(HEADER_USER_EMAIL), servletRequest);
+    CallerIdentity caller = new CallerIdentity(role, authUserId, authEmail);
+    if (caller.isMissing()) {
+      throw new UnauthorizedException("Authentication context is required.");
+    }
+    return caller;
+  }
 
-    if (role == null && authUserId == null && authEmail == null) {
+  private void checkUserAccess(UserResponse userResponse, HttpServletRequest servletRequest) {
+    if (userResponse == null) {
+      throw new UnauthorizedException("Authentication context is required.");
+    }
+    CallerIdentity caller = extractCallerIdentity(servletRequest);
+    if (caller.isPrivileged()) {
       return;
     }
-
-    if (ROLE_ADMIN.equalsIgnoreCase(role)) {
-      return;
-    }
-
-    boolean isSelf =
-        (authUserId != null && authUserId.equalsIgnoreCase(userResponse.id().toString()))
-            || (authEmail != null && authEmail.equalsIgnoreCase(userResponse.email()));
-
-    if (!isSelf) {
+    if (!isSameUser(caller, userResponse.id().toString(), userResponse.email())) {
       throw new ForbiddenException(
           "Access denied: you are not authorized to view this user's personal details.");
     }
   }
 
   private void checkUserAccess(UUID targetUserId, HttpServletRequest servletRequest) {
-    if (servletRequest == null || targetUserId == null) {
+    if (targetUserId == null) {
+      throw new UnauthorizedException("Authentication context is required.");
+    }
+    CallerIdentity caller = extractCallerIdentity(servletRequest);
+    if (caller.isPrivileged()) {
       return;
     }
-    String role = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ROLE);
-    if (ROLE_ADMIN.equalsIgnoreCase(role)) {
-      return;
+    if (!isTargetUser(targetUserId, caller.userId(), caller.email())) {
+      throw new ForbiddenException(
+          "Access denied: you are not authorized to access or modify this user's resources.");
     }
-
-    String authUserId = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_ID);
-    String authEmail = (String) servletRequest.getAttribute(JwtAuthInterceptor.ATTR_USER_EMAIL);
-    if (isUnauthenticated(role, authUserId, authEmail)) {
-      return;
-    }
-
-    if (isTargetUser(targetUserId, authUserId, authEmail)) {
-      return;
-    }
-
-    throw new ForbiddenException(
-        "Access denied: you are not authorized to manage this user's vehicles.");
   }
 
-  private boolean isUnauthenticated(String role, String authUserId, String authEmail) {
-    return role == null && authUserId == null && authEmail == null;
+  private boolean isSameUser(CallerIdentity caller, String id, String email) {
+    return (caller.userId() != null && caller.userId().equalsIgnoreCase(id))
+        || (caller.email() != null && caller.email().equalsIgnoreCase(email));
   }
 
   private boolean isTargetUser(UUID targetUserId, String authUserId, String authEmail) {
@@ -312,6 +321,10 @@ public class UserProfileController {
         description = "Invalid request payload",
         content = @Content),
     @ApiResponse(
+        responseCode = FORBIDDEN_STATUS,
+        description = "Forbidden - Access denied",
+        content = @Content),
+    @ApiResponse(
         responseCode = NOT_FOUND_STATUS,
         description = USER_NOT_FOUND_MSG,
         content = @Content)
@@ -328,8 +341,14 @@ public class UserProfileController {
               description = "Updated profile data",
               required = true)
           @RequestBody
-          UserUpdateRequest request) {
+          UserUpdateRequest request,
+      HttpServletRequest servletRequest) {
+    checkUserAccess(userId, servletRequest);
     return ResponseEntity.ok(userProfileService.updateUserProfile(userId, request));
+  }
+
+  public ResponseEntity<UserResponse> updateUserProfile(UUID userId, UserUpdateRequest request) {
+    return updateUserProfile(userId, request, null);
   }
 
   @DeleteMapping("/{userId}")
@@ -343,6 +362,10 @@ public class UserProfileController {
         description = "User profile successfully deleted",
         content = @Content),
     @ApiResponse(
+        responseCode = FORBIDDEN_STATUS,
+        description = "Forbidden - Access denied",
+        content = @Content),
+    @ApiResponse(
         responseCode = NOT_FOUND_STATUS,
         description = USER_NOT_FOUND_MSG,
         content = @Content)
@@ -353,9 +376,15 @@ public class UserProfileController {
               example = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
               required = true)
           @PathVariable
-          UUID userId) {
+          UUID userId,
+      HttpServletRequest servletRequest) {
+    checkUserAccess(userId, servletRequest);
     userProfileService.deleteUserProfile(userId);
     return ResponseEntity.noContent().build();
+  }
+
+  public ResponseEntity<Void> deleteUserProfile(UUID userId) {
+    return deleteUserProfile(userId, null);
   }
 
   @GetMapping("/{userId}/vehicles")
