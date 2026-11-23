@@ -210,7 +210,10 @@ class UserProfileControllerTest {
     when(userProfileService.getUserProfile(userId)).thenReturn(response);
 
     mockMvc
-        .perform(get("/v1/users/{userId}", userId))
+        .perform(
+            get("/v1/users/{userId}", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(userId.toString()))
         .andExpect(jsonPath("$.firstName").value("Sophie"));
@@ -221,7 +224,10 @@ class UserProfileControllerTest {
     when(userProfileService.getUserProfile(userId)).thenThrow(new UserNotFoundException(userId));
 
     mockMvc
-        .perform(get("/v1/users/{userId}", userId))
+        .perform(
+            get("/v1/users/{userId}", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.detail").value("User not found with id: " + userId));
   }
@@ -254,7 +260,9 @@ class UserProfileControllerTest {
         .perform(
             put("/v1/users/{userId}", userId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest)))
+                .content(objectMapper.writeValueAsString(updateRequest))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.firstName").value("Sophie-Anne"))
         .andExpect(jsonPath("$.pickupLocation").value("Mairie Annexe"));
@@ -264,7 +272,12 @@ class UserProfileControllerTest {
   void shouldDeleteUserProfile() throws Exception {
     doNothing().when(userProfileService).deleteUserProfile(userId);
 
-    mockMvc.perform(delete("/v1/users/{userId}", userId)).andExpect(status().isNoContent());
+    mockMvc
+        .perform(
+            delete("/v1/users/{userId}", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isNoContent());
   }
 
   @Test
@@ -276,7 +289,10 @@ class UserProfileControllerTest {
     when(userProfileService.getVehicles(userId)).thenReturn(vehicles);
 
     mockMvc
-        .perform(get("/v1/users/{userId}/vehicles", userId))
+        .perform(
+            get("/v1/users/{userId}/vehicles", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].licensePlate").value("AA-123-AA"));
@@ -293,7 +309,9 @@ class UserProfileControllerTest {
         .perform(
             post("/v1/users/{userId}/vehicles", userId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isCreated())
         .andExpect(header().string("Location", "/v1/users/" + userId + "/vehicles/CC-789-DD"))
         .andExpect(jsonPath("$.licensePlate").value("CC-789-DD"));
@@ -309,7 +327,9 @@ class UserProfileControllerTest {
         .perform(
             post("/v1/users/{userId}/vehicles", userId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isConflict());
   }
 
@@ -331,7 +351,10 @@ class UserProfileControllerTest {
     doNothing().when(userProfileService).removeVehicle(userId, "AA-123-AA");
 
     mockMvc
-        .perform(delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "AA-123-AA"))
+        .perform(
+            delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "AA-123-AA")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isNoContent());
   }
 
@@ -342,7 +365,10 @@ class UserProfileControllerTest {
         .removeVehicle(userId, "ZZ-999-ZZ");
 
     mockMvc
-        .perform(delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "ZZ-999-ZZ"))
+        .perform(
+            delete("/v1/users/{userId}/vehicles/{vehicleId}", userId, "ZZ-999-ZZ")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isNotFound());
   }
 
@@ -393,7 +419,9 @@ class UserProfileControllerTest {
         .perform(
             post("/v1/users/{userId}/vehicles", userId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isForbidden());
   }
 
@@ -407,7 +435,9 @@ class UserProfileControllerTest {
         .perform(
             put("/v1/users/{userId}/vehicles/{vehicleId}", userId, "AA-123-AA")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.licensePlate").value("DD-111-EE"));
   }
@@ -497,5 +527,37 @@ class UserProfileControllerTest {
             delete("/v1/users/me/vehicles/{vehicleId}", "AA-123-AA")
                 .header("X-User-Id", userId.toString()))
         .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void shouldDenyUpdateUserProfileWhenDifferentUser() throws Exception {
+    UUID otherUserId = UUID.randomUUID();
+    UserUpdateRequest updateRequest =
+        UserUpdateRequest.builder()
+            .firstName("Hacked")
+            .lastName("Hacked")
+            .birthDate(LocalDate.of(1990, 1, 1))
+            .build();
+
+    mockMvc
+        .perform(
+            put("/v1/users/{userId}", userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest))
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, otherUserId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldDenyDeleteUserProfileWhenDifferentUser() throws Exception {
+    UUID otherUserId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            delete("/v1/users/{userId}", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, otherUserId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isForbidden());
   }
 }
