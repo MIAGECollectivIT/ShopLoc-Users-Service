@@ -14,8 +14,6 @@ import lombok.Builder;
 @Builder
 @Schema(description = "Detailed representation of a ShopLoc user profile")
 public record UserResponse(
-    @Schema(description = "Numeric primary key identifier of the user", example = "1")
-        Long numericId,
     @Schema(
             description = "Public UUID identifier of the user",
             example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
@@ -61,7 +59,6 @@ public record UserResponse(
     }
 
     return UserResponse.builder()
-        .numericId(user.getId())
         .id(user.getPublicId())
         .email(user.getEmail())
         .role(user.getRole())

@@ -13,9 +13,7 @@ public interface UserProfileService {
 
   UserResponse getUserProfile(UUID userId);
 
-  UserResponse getUserProfileByIdentifier(String identifier);
-
-  void linkStoreToUser(Long userId, Long storeId);
+  void linkStoreToUser(UUID userId, UUID storeUid);
 
   List<fr.miage.collectivit.usersservice.dto.PartnerResponse> getPartners(String query, int limit);
 

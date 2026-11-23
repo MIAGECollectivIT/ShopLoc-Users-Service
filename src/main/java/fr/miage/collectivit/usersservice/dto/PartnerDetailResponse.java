@@ -11,7 +11,6 @@ import lombok.Builder;
 @Builder
 @Schema(description = "Detailed administrative representation of a partner merchant")
 public record PartnerDetailResponse(
-    @Schema(description = "Internal database identifier", example = "1") Long id,
     @Schema(
             description = "Public UUID identifier",
             example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
@@ -23,8 +22,10 @@ public record PartnerDetailResponse(
     @Schema(description = "Birth date", example = "1985-05-15") LocalDate birthDate,
     @Schema(description = "Company or merchant store label", example = "Boulangerie Dupont")
         String companyName,
-    @Schema(description = "List of associated store identifiers", example = "[1, 2]")
-        List<Long> storeIds,
+    @Schema(
+            description = "List of associated store public UUID identifiers",
+            example = "[\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"]")
+        List<UUID> storeUids,
     @Schema(description = "Creation timestamp", example = "2026-11-01T10:00:00Z") Instant createdAt,
     @Schema(description = "Last update timestamp", example = "2026-11-02T12:00:00Z")
         Instant updatedAt) {}

@@ -20,7 +20,6 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
   public static final String SESSION_COOKIE_NAME = "shoploc_token";
 
   public static final String ATTR_USER_ID = "authenticatedUserId";
-  public static final String ATTR_USER_DB_ID = "authenticatedUserDbId";
   public static final String ATTR_USER_EMAIL = "authenticatedUserEmail";
   public static final String ATTR_USER_ROLE = "authenticatedUserRole";
   public static final String ATTR_CLAIMS = "jwtClaims";
@@ -105,24 +104,9 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
 
   private void populateRequestAttributes(HttpServletRequest request, Claims claims) {
     request.setAttribute(ATTR_USER_ID, claims.get("userId", String.class));
-    request.setAttribute(ATTR_USER_DB_ID, extractDbId(claims.get("dbId")));
     request.setAttribute(ATTR_USER_EMAIL, claims.get("email", String.class));
     request.setAttribute(ATTR_USER_ROLE, claims.get("role", String.class));
     request.setAttribute(ATTR_CLAIMS, claims);
-  }
-
-  private Long extractDbId(Object dbIdObj) {
-    if (dbIdObj instanceof Number n) {
-      return n.longValue();
-    }
-    if (dbIdObj != null) {
-      try {
-        return Long.parseLong(dbIdObj.toString());
-      } catch (NumberFormatException ignored) {
-        return null;
-      }
-    }
-    return null;
   }
 
   private boolean isWhitelisted(String path, String method) {

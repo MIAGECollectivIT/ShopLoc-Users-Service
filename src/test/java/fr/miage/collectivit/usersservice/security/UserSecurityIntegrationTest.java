@@ -1,5 +1,6 @@
 package fr.miage.collectivit.usersservice.security;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -108,6 +109,7 @@ class UserSecurityIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.token").isString())
         .andExpect(jsonPath("$.tokenType").value("Bearer"))
+        .andExpect(jsonPath("$.user.numericId").doesNotExist())
         .andExpect(jsonPath("$.user.role").value("MERCHANT"))
         .andExpect(jsonPath("$.user.email").value("bob.merchant@example.com"));
   }
@@ -342,8 +344,8 @@ class UserSecurityIntegrationTest {
   }
 
   @Test
-  @DisplayName("GET /v1/users/{identifier} works with UUID and numeric ID for own account")
-  void shouldAllowAccessByNumericIdAndUuidWithToken() throws Exception {
+  @DisplayName("GET /v1/users/{userId} works with UUID and rejects numeric ID with 400")
+  void shouldAllowAccessByUuidAndRejectNumericIdWithToken() throws Exception {
     Merchant user =
         Merchant.builder()
             .firstName("Sophie")
@@ -360,13 +362,14 @@ class UserSecurityIntegrationTest {
         .perform(
             get("/v1/users/" + savedUser.getPublicId()).header("Authorization", "Bearer " + token))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.numericId").doesNotExist())
+        .andExpect(jsonPath("$.id").value(savedUser.getPublicId().toString()))
         .andExpect(jsonPath("$.email").value("sophie.poly@example.com"));
 
-    // Call by Long numeric DB id
+    // Call by Long numeric DB id -> 400 Bad Request
     mockMvc
         .perform(get("/v1/users/" + savedUser.getId()).header("Authorization", "Bearer " + token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.email").value("sophie.poly@example.com"));
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -449,7 +452,8 @@ class UserSecurityIntegrationTest {
     User savedUser = userRepository.saveAndFlush(user);
     String token = jwtTokenService.generateToken(savedUser);
 
-    UserStoreLinkRequest request = new UserStoreLinkRequest(savedUser.getId(), 55L);
+    UUID storeUid = UUID.randomUUID();
+    UserStoreLinkRequest request = new UserStoreLinkRequest(savedUser.getPublicId(), storeUid);
 
     mockMvc
         .perform(
@@ -546,15 +550,18 @@ class UserSecurityIntegrationTest {
 
     mockMvc
         .perform(
-            get("/v1/admin/partners/" + savedMerchant.getId())
+            get("/v1/admin/partners/" + savedMerchant.getPublicId())
                 .header("Authorization", "Bearer " + adminToken))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").doesNotExist())
+        .andExpect(jsonPath("$.publicId").value(savedMerchant.getPublicId().toString()))
         .andExpect(jsonPath("$.email").value("benoit.partner@example.com"));
 
-    AdminAddStoreRequest addStoreRequest = new AdminAddStoreRequest(99L);
+    UUID storeUid = UUID.randomUUID();
+    AdminAddStoreRequest addStoreRequest = new AdminAddStoreRequest(storeUid);
     mockMvc
         .perform(
-            post("/v1/admin/partners/" + savedMerchant.getId() + "/stores")
+            post("/v1/admin/partners/" + savedMerchant.getPublicId() + "/stores")
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(addStoreRequest)))
@@ -562,9 +569,22 @@ class UserSecurityIntegrationTest {
 
     mockMvc
         .perform(
-            get("/v1/admin/partners/" + savedMerchant.getId())
+            get("/v1/admin/partners/" + savedMerchant.getPublicId())
                 .header("Authorization", "Bearer " + adminToken))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.storeIds[0]").value(99));
+        .andExpect(jsonPath("$.storeUids[0]").value(storeUid.toString()));
+
+    mockMvc
+        .perform(
+            delete("/v1/admin/partners/" + savedMerchant.getPublicId() + "/stores/" + storeUid)
+                .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(
+            get("/v1/admin/partners/" + savedMerchant.getPublicId())
+                .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.storeUids").isEmpty());
   }
 }

@@ -5,16 +5,17 @@ import fr.miage.collectivit.usersservice.dto.AdminPartnerUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.PartnerDetailResponse;
 import fr.miage.collectivit.usersservice.dto.PartnerResponse;
 import java.util.List;
+import java.util.UUID;
 
 public interface AdminPartnerService {
 
   List<PartnerResponse> getPartners(String query, int limit);
 
-  PartnerDetailResponse getPartnerDetails(String identifier);
+  PartnerDetailResponse getPartnerDetails(UUID id);
 
-  PartnerDetailResponse updatePartner(String identifier, AdminPartnerUpdateRequest request);
+  PartnerDetailResponse updatePartner(UUID id, AdminPartnerUpdateRequest request);
 
-  void addStoreToPartner(String identifier, AdminAddStoreRequest request);
+  void addStoreToPartner(UUID id, AdminAddStoreRequest request);
 
-  void removeStoreFromPartner(String identifier, Long storeId);
+  void removeStoreFromPartner(UUID id, UUID storeUid);
 }

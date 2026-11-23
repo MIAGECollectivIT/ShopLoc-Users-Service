@@ -48,6 +48,7 @@ class JwtTokenServiceTest {
     Claims claims = jwtTokenService.validateAndExtractClaims(token);
     assertThat(claims.getSubject()).isEqualTo(publicId.toString());
     assertThat(claims.get("userId", String.class)).isEqualTo(publicId.toString());
+    assertThat(claims.get("dbId")).isNull();
     assertThat(claims.get("email", String.class)).isEqualTo("alice@shoploc.fr");
     assertThat(claims.get("role", String.class)).isEqualTo("CLIENT");
     assertThat(claims.get("clientCode", String.class)).isEqualTo("CL12345");

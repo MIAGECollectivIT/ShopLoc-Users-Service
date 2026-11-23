@@ -3,9 +3,12 @@ package fr.miage.collectivit.usersservice.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import fr.miage.collectivit.usersservice.dto.PartnerResponse;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
 import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
@@ -15,11 +18,14 @@ import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.Merchant;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
+import fr.miage.collectivit.usersservice.entity.UserStore;
 import fr.miage.collectivit.usersservice.exception.ForbiddenException;
+import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
+import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
 import fr.miage.collectivit.usersservice.service.impl.UserProfileServiceImpl;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -32,11 +38,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class UserProfileServiceTest {
 
   @Mock private UserRepository userRepository;
+  @Mock private UserStoreRepository userStoreRepository;
 
   @InjectMocks private UserProfileServiceImpl userProfileService;
 
@@ -180,25 +188,55 @@ class UserProfileServiceTest {
   }
 
   @Test
-  void shouldGetCurrentUserProfileByNumericId() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-
-    UserResponse response = userProfileService.getCurrentUserProfile("1", null);
-
-    assertThat(response).isNotNull();
-    assertThat(response.id()).isEqualTo(userId);
-    assertThat(response.email()).isEqualTo("user@example.com");
+  void shouldRejectNumericIdOnGetCurrentUserProfile() {
+    assertThatThrownBy(() -> userProfileService.getCurrentUserProfile("1", null))
+        .isInstanceOf(IllegalArgumentException.class);
+    verify(userRepository, never()).findById(any());
   }
 
   @Test
-  void shouldGetCurrentUserProfileByEmail() {
-    when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(existingUser));
+  void shouldRejectEmailFallbackOnGetCurrentUserProfile() {
+    assertThatThrownBy(() -> userProfileService.getCurrentUserProfile(null, "user@example.com"))
+        .isInstanceOf(UnauthorizedException.class);
+    verify(userRepository, never()).findByEmail(any());
+  }
 
-    UserResponse response = userProfileService.getCurrentUserProfile(null, "user@example.com");
+  @Test
+  void shouldLinkStoreToUserUsingPublicAndStoreUids() {
+    UUID merchantPublicId = UUID.randomUUID();
+    UUID storeUid = UUID.randomUUID();
+    Merchant merchant =
+        Merchant.builder().id(10L).publicId(merchantPublicId).email("m@example.com").build();
+    when(userRepository.findByPublicId(merchantPublicId)).thenReturn(Optional.of(merchant));
+    when(userStoreRepository.existsByUserIdAndStoreUid(10L, storeUid)).thenReturn(false);
 
-    assertThat(response).isNotNull();
-    assertThat(response.id()).isEqualTo(userId);
-    assertThat(response.email()).isEqualTo("user@example.com");
+    userProfileService.linkStoreToUser(merchantPublicId, storeUid);
+
+    verify(userStoreRepository).save(any(UserStore.class));
+  }
+
+  @Test
+  void shouldListPartnersWithoutInternalId() {
+    UUID merchantPublicId = UUID.randomUUID();
+    Merchant merchant =
+        Merchant.builder()
+            .id(10L)
+            .publicId(merchantPublicId)
+            .firstName("Jean")
+            .lastName("Dupont")
+            .email("m@example.com")
+            .role(UserRole.MERCHANT)
+            .build();
+    when(userRepository.searchByRoleAndQuery(eq(UserRole.MERCHANT), eq(""), any(Pageable.class)))
+        .thenReturn(List.of(merchant));
+    when(userStoreRepository.countStoresByUserIds(List.of(10L)))
+        .thenReturn(List.<Object[]>of(new Object[] {10L, 2L}));
+
+    List<PartnerResponse> partners = userProfileService.getPartners(null, 20);
+
+    assertThat(partners).hasSize(1);
+    assertThat(partners.getFirst().publicId()).isEqualTo(merchantPublicId);
+    assertThat(partners.getFirst().existingStoresCount()).isEqualTo(2);
   }
 
   @Test

@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -61,10 +62,10 @@ public class AdminUserController {
 
   @GetMapping("/{id}")
   @Operation(
-      summary = "Get user details by ID",
+      summary = "Get user details by public UUID",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   public ResponseEntity<UserResponse> getUserById(
-      @PathVariable("id") String id, HttpServletRequest request) {
+      @PathVariable("id") UUID id, HttpServletRequest request) {
     checkAdminRole(request);
     return ResponseEntity.ok(adminUserService.getUserById(id));
   }
@@ -74,7 +75,7 @@ public class AdminUserController {
       summary = "Update user details",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   public ResponseEntity<UserResponse> updateUser(
-      @PathVariable("id") String id,
+      @PathVariable("id") UUID id,
       @Valid @RequestBody AdminUserUpdateRequest requestBody,
       HttpServletRequest request) {
     checkAdminRole(request);
@@ -86,7 +87,7 @@ public class AdminUserController {
       summary = "Unlock temporarily locked user account",
       security = @SecurityRequirement(name = OpenApiConfig.SECURITY_SCHEME_NAME))
   public ResponseEntity<UserResponse> unlockUser(
-      @PathVariable("id") String id, HttpServletRequest request) {
+      @PathVariable("id") UUID id, HttpServletRequest request) {
     checkAdminRole(request);
     return ResponseEntity.ok(adminUserService.unlockUser(id));
   }

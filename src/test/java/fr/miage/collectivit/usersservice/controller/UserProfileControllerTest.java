@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.miage.collectivit.usersservice.dto.UserResponse;
+import fr.miage.collectivit.usersservice.dto.UserStoreLinkRequest;
 import fr.miage.collectivit.usersservice.dto.UserUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
@@ -215,8 +216,53 @@ class UserProfileControllerTest {
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
                 .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.numericId").doesNotExist())
         .andExpect(jsonPath("$.id").value(userId.toString()))
         .andExpect(jsonPath("$.firstName").value("Sophie"));
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenGetUserProfileWithNonUuid() throws Exception {
+    mockMvc
+        .perform(
+            get("/v1/users/123")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ID, userId.toString())
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void shouldDenyAccessWhenOnlyEmailAttributePresentWithoutUserId() throws Exception {
+    mockMvc
+        .perform(
+            get("/v1/users/{userId}", userId)
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_EMAIL, "client@test.com")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "CLIENT"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldLinkStoreToUserWithUuids() throws Exception {
+    UUID storeUid = UUID.randomUUID();
+    UserStoreLinkRequest request = new UserStoreLinkRequest(userId, storeUid);
+    doNothing().when(userProfileService).linkStoreToUser(userId, storeUid);
+
+    mockMvc
+        .perform(
+            post("/v1/users/stores")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenLinkStorePayloadHasNonUuid() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/users/stores")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userId\":\"123\",\"storeUid\":\"456\"}"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
