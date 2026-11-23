@@ -5,6 +5,7 @@ import fr.miage.collectivit.usersservice.entity.PhysicalCardNotification;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.repository.PhysicalCardNotificationRepository;
 import fr.miage.collectivit.usersservice.service.PhysicalCardNotificationService;
+import fr.miage.collectivit.usersservice.service.SystemSettingService;
 import fr.miage.collectivit.usersservice.service.mail.PhysicalCardEmailService;
 import java.time.Instant;
 import java.util.List;
@@ -19,12 +20,15 @@ public class PhysicalCardNotificationServiceImpl implements PhysicalCardNotifica
 
   private final PhysicalCardNotificationRepository notificationRepository;
   private final PhysicalCardEmailService physicalCardEmailService;
+  private final SystemSettingService systemSettingService;
 
   public PhysicalCardNotificationServiceImpl(
       PhysicalCardNotificationRepository notificationRepository,
-      PhysicalCardEmailService physicalCardEmailService) {
+      PhysicalCardEmailService physicalCardEmailService,
+      SystemSettingService systemSettingService) {
     this.notificationRepository = notificationRepository;
     this.physicalCardEmailService = physicalCardEmailService;
+    this.systemSettingService = systemSettingService;
   }
 
   @Override
@@ -51,7 +55,7 @@ public class PhysicalCardNotificationServiceImpl implements PhysicalCardNotifica
       return null;
     }
 
-    String recipientEmail = physicalCardEmailService.getDefaultRecipientEmail();
+    String recipientEmail = systemSettingService.getCitizenCardServiceEmail();
 
     PhysicalCardNotification notification =
         PhysicalCardNotification.builder()
