@@ -30,15 +30,17 @@ class PhysicalCardNotificationServiceTest {
 
   @Mock private PhysicalCardNotificationRepository notificationRepository;
   @Mock private PhysicalCardEmailService emailService;
+  @Mock private SystemSettingService systemSettingService;
 
   private PhysicalCardNotificationService notificationService;
 
   @BeforeEach
   void setUp() {
     notificationService =
-        new PhysicalCardNotificationServiceImpl(notificationRepository, emailService);
+        new PhysicalCardNotificationServiceImpl(
+            notificationRepository, emailService, systemSettingService);
     lenient()
-        .when(emailService.getDefaultRecipientEmail())
+        .when(systemSettingService.getCitizenCardServiceEmail())
         .thenReturn("citoyen-numerique@shop-loc.fr");
   }
 
