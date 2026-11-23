@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("PMD.TooManyMethods")
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.GodClass"})
 public class UserProfileServiceImpl implements UserProfileService {
 
   private static final int DEFAULT_LIMIT = 20;
