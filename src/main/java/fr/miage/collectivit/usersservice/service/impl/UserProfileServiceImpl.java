@@ -7,6 +7,7 @@ import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
+import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.entity.UserStore;
 import fr.miage.collectivit.usersservice.exception.ForbiddenException;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
@@ -16,6 +17,7 @@ import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
 import fr.miage.collectivit.usersservice.service.AdminPartnerService;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
+import fr.miage.collectivit.usersservice.service.UserRoleTransitionService;
 import fr.miage.collectivit.usersservice.validation.FrenchLicensePlateValidator;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +41,7 @@ public class UserProfileServiceImpl implements UserProfileService {
   private final UserRepository userRepository;
   private final UserStoreRepository userStoreRepository;
   private final AdminPartnerService adminPartnerService;
+  private final UserRoleTransitionService userRoleTransitionService;
 
   @Override
   @Transactional(readOnly = true)
@@ -57,11 +60,16 @@ public class UserProfileServiceImpl implements UserProfileService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CACHE_USER_PROFILES, key = CACHE_KEY_USER_ID)
   public void linkStoreToUser(UUID userId, UUID storeUid) {
     if (userId == null || storeUid == null) {
       return;
     }
     User user = findUserByPublicId(userId);
+    if (user.getRole() == UserRole.CLIENT) {
+      userRoleTransitionService.changeUserRole(user.getId(), UserRole.MERCHANT);
+      log.info("Promoted user publicId={} from CLIENT to MERCHANT on store link", userId);
+    }
     if (userStoreRepository.existsByUserIdAndStoreUid(user.getId(), storeUid)) {
       if (log.isDebugEnabled()) {
         log.debug("Link already exists for userId={} and storeUid={}", userId, storeUid);

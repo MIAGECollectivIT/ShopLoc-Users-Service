@@ -21,13 +21,19 @@ public final class UserSpecifications {
   private UserSpecifications() {}
 
   public static Specification<User> withFilters(
-      String query, UserRole role, Boolean locked, Instant from, Instant to) {
+      String query,
+      UserRole role,
+      Boolean locked,
+      Boolean eligibleForStore,
+      Instant from,
+      Instant to) {
     return (root, criteriaQuery, cb) -> {
       List<Predicate> predicates = new ArrayList<>();
 
       addQueryPredicate(predicates, cb, root, query);
       addRolePredicate(predicates, cb, root, role);
       addLockedPredicate(predicates, cb, root, locked);
+      addEligibleForStorePredicate(predicates, cb, root, eligibleForStore);
       addDatePredicates(predicates, cb, root, from, to);
 
       return cb.and(predicates.toArray(new Predicate[0]));
@@ -63,6 +69,16 @@ public final class UserSpecifications {
       } else {
         predicates.add(cb.or(cb.isNull(lockedUntil), cb.lessThanOrEqualTo(lockedUntil, now)));
       }
+    }
+  }
+
+  private static void addEligibleForStorePredicate(
+      List<Predicate> predicates, CriteriaBuilder cb, Root<User> root, Boolean eligibleForStore) {
+    if (Boolean.TRUE.equals(eligibleForStore)) {
+      predicates.add(cb.notEqual(root.get("role"), UserRole.ADMIN));
+      Instant now = Instant.now();
+      Path<Instant> lockedUntil = root.get(FIELD_LOCKED_UNTIL);
+      predicates.add(cb.or(cb.isNull(lockedUntil), cb.lessThanOrEqualTo(lockedUntil, now)));
     }
   }
 

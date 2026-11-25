@@ -42,8 +42,14 @@ public record UserResponse(
     @Schema(description = "Account creation timestamp", example = "2026-11-01T10:15:30Z")
         Instant createdAt,
     @Schema(description = "Profile last update timestamp", example = "2026-11-07T12:00:00Z")
-        Instant updatedAt) {
+        Instant updatedAt,
+    @Schema(description = "Number of stores linked to the user", example = "1")
+        Integer storesCount) {
   public static UserResponse fromEntity(User user) {
+    return fromEntity(user, null);
+  }
+
+  public static UserResponse fromEntity(User user, Integer storesCount) {
     if (user == null) {
       return null;
     }
@@ -71,6 +77,7 @@ public record UserResponse(
         .licensePlates(licensePlates)
         .createdAt(user.getCreatedAt())
         .updatedAt(user.getUpdatedAt())
+        .storesCount(storesCount)
         .build();
   }
 }

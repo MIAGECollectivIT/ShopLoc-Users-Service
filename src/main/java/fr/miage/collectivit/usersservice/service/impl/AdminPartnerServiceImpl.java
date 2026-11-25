@@ -11,6 +11,7 @@ import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
 import fr.miage.collectivit.usersservice.service.AdminPartnerService;
+import fr.miage.collectivit.usersservice.service.UserRoleTransitionService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
 
   private final UserRepository userRepository;
   private final UserStoreRepository userStoreRepository;
+  private final UserRoleTransitionService userRoleTransitionService;
 
   @Override
   @Transactional(readOnly = true)
@@ -81,44 +84,61 @@ public class AdminPartnerServiceImpl implements AdminPartnerService {
 
   @Override
   @Transactional
+  @CacheEvict(value = "userProfiles", key = "#id")
   public void addStoreToPartner(UUID id, AdminAddStoreRequest request) {
-    User merchant = resolveMerchant(id);
-    UUID storeUid = request.storeUid();
+    User user = resolveUser(id);
+    if (user.getRole() == UserRole.CLIENT) {
+      userRoleTransitionService.changeUserRole(user.getId(), UserRole.MERCHANT);
+      if (log.isInfoEnabled()) {
+        log.info("Promoted user {} from CLIENT to MERCHANT on store assignment", id);
+      }
+    }
 
-    if (userStoreRepository.existsByUserIdAndStoreUid(merchant.getId(), storeUid)) {
+    UUID storeUid = request.storeUid();
+    if (userStoreRepository.existsByUserIdAndStoreUid(user.getId(), storeUid)) {
       if (log.isDebugEnabled()) {
-        log.debug(
-            "Store {} is already associated with partner {}", storeUid, merchant.getPublicId());
+        log.debug("Store {} is already associated with partner {}", storeUid, user.getPublicId());
       }
       return;
     }
 
-    UserStore link = UserStore.builder().userId(merchant.getId()).storeUid(storeUid).build();
+    UserStore link = UserStore.builder().userId(user.getId()).storeUid(storeUid).build();
     userStoreRepository.save(link);
     if (log.isInfoEnabled()) {
-      log.info("Linked store {} to partner {}", storeUid, merchant.getPublicId());
+      log.info("Linked store {} to partner {}", storeUid, user.getPublicId());
     }
   }
 
   @Override
   @Transactional
+  @CacheEvict(value = "userProfiles", key = "#id")
   public void removeStoreFromPartner(UUID id, UUID storeUid) {
-    User merchant = resolveMerchant(id);
-    userStoreRepository.deleteByUserIdAndStoreUid(merchant.getId(), storeUid);
+    User user = resolveUser(id);
+    userStoreRepository.deleteByUserIdAndStoreUid(user.getId(), storeUid);
     if (log.isInfoEnabled()) {
-      log.info("Removed store {} from partner {}", storeUid, merchant.getPublicId());
+      log.info("Removed store {} from partner {}", storeUid, user.getPublicId());
+    }
+
+    if (user.getRole() == UserRole.MERCHANT && fetchStoreUids(user.getId()).isEmpty()) {
+      userRoleTransitionService.changeUserRole(user.getId(), UserRole.CLIENT);
+      if (log.isInfoEnabled()) {
+        log.info("Demoted user {} from MERCHANT to CLIENT (no stores remaining)", id);
+      }
     }
   }
 
-  private User resolveMerchant(UUID id) {
+  private User resolveUser(UUID id) {
     if (id == null) {
       throw new UserNotFoundException("Partner merchant identifier must not be empty");
     }
-    User user =
-        userRepository
-            .findByPublicId(id)
-            .orElseThrow(
-                () -> new UserNotFoundException("Partner merchant not found with publicId: " + id));
+    return userRepository
+        .findByPublicId(id)
+        .orElseThrow(
+            () -> new UserNotFoundException("Partner merchant not found with publicId: " + id));
+  }
+
+  private User resolveMerchant(UUID id) {
+    User user = resolveUser(id);
     if (user.getRole() != UserRole.MERCHANT) {
       throw new UserNotFoundException("Partner merchant not found with publicId: " + id);
     }

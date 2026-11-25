@@ -3,7 +3,6 @@ package fr.miage.collectivit.usersservice.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,10 +15,8 @@ import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
+import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
 import fr.miage.collectivit.usersservice.service.impl.AdminUserServiceImpl;
-import fr.miage.collectivit.usersservice.util.ClientCodeGenerator;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -42,9 +39,8 @@ import org.springframework.data.jpa.domain.Specification;
 class AdminUserServiceTest {
 
   @Mock private UserRepository userRepository;
-  @Mock private EntityManager entityManager;
-  @Mock private ClientCodeGenerator clientCodeGenerator;
-  @Mock private Query queryMock;
+  @Mock private UserStoreRepository userStoreRepository;
+  @Mock private UserRoleTransitionService userRoleTransitionService;
 
   @InjectMocks private AdminUserServiceImpl adminUserService;
 
@@ -74,13 +70,16 @@ class AdminUserServiceTest {
   void shouldReturnPaginatedUsersWithFilters() {
     Page<User> page = new PageImpl<>(List.of(sampleUser), PageRequest.of(0, 20), 1);
     when(userRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(page);
+    when(userStoreRepository.countStoresByUserIds(List.of(1L)))
+        .thenReturn(List.<Object[]>of(new Object[] {1L, 2L}));
 
     PageResponse<UserResponse> response =
         adminUserService.getUsers(
-            "alice", UserRole.CLIENT, false, null, null, PageRequest.of(0, 20));
+            "alice", UserRole.CLIENT, false, true, null, null, PageRequest.of(0, 20));
 
     assertThat(response.content()).hasSize(1);
     assertThat(response.content().getFirst().email()).isEqualTo("alice@example.com");
+    assertThat(response.content().getFirst().storesCount()).isEqualTo(2);
     assertThat(response.totalElements()).isEqualTo(1);
     assertThat(response.totalPages()).isEqualTo(1);
   }
@@ -125,11 +124,7 @@ class AdminUserServiceTest {
 
   @Test
   void shouldUpdateUserRoleToMerchantSuccessfully() {
-    when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleUser));
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-    when(entityManager.createNativeQuery(anyString())).thenReturn(queryMock);
-    when(queryMock.setParameter(anyString(), any())).thenReturn(queryMock);
 
     Merchant merchantUser =
         Merchant.builder()
@@ -161,8 +156,7 @@ class AdminUserServiceTest {
     UserResponse response = adminUserService.updateUser(publicId, updateRequest);
 
     assertThat(response.role()).isEqualTo(UserRole.MERCHANT);
-    verify(entityManager).flush();
-    verify(entityManager).clear();
+    verify(userRoleTransitionService).changeUserRole(1L, UserRole.MERCHANT);
   }
 
   @Test

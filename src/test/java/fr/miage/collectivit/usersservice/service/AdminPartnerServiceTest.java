@@ -12,6 +12,8 @@ import fr.miage.collectivit.usersservice.dto.AdminAddStoreRequest;
 import fr.miage.collectivit.usersservice.dto.AdminPartnerUpdateRequest;
 import fr.miage.collectivit.usersservice.dto.PartnerDetailResponse;
 import fr.miage.collectivit.usersservice.dto.PartnerResponse;
+import fr.miage.collectivit.usersservice.entity.Admin;
+import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.Merchant;
 import fr.miage.collectivit.usersservice.entity.User;
 import fr.miage.collectivit.usersservice.entity.UserRole;
@@ -38,6 +40,7 @@ class AdminPartnerServiceTest {
 
   @Mock private UserRepository userRepository;
   @Mock private UserStoreRepository userStoreRepository;
+  @Mock private UserRoleTransitionService userRoleTransitionService;
 
   @InjectMocks private AdminPartnerServiceImpl adminPartnerService;
 
@@ -148,12 +151,74 @@ class AdminPartnerServiceTest {
   }
 
   @Test
-  void shouldRemoveStoreFromPartner() {
+  void shouldRemoveStoreFromPartnerAndDemoteToClientWhenNoStoresRemain() {
     UUID storeUid = UUID.randomUUID();
     when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
+    when(userStoreRepository.findByUserId(1L)).thenReturn(List.of());
 
     adminPartnerService.removeStoreFromPartner(publicId, storeUid);
 
     verify(userStoreRepository).deleteByUserIdAndStoreUid(1L, storeUid);
+    verify(userRoleTransitionService).changeUserRole(1L, UserRole.CLIENT);
+  }
+
+  @Test
+  void shouldKeepMerchantRoleWhenOtherStoresRemainAfterRemoval() {
+    UUID storeUid = UUID.randomUUID();
+    UUID remainingStoreUid = UUID.randomUUID();
+    when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
+    when(userStoreRepository.findByUserId(1L))
+        .thenReturn(
+            List.of(UserStore.builder().id(102L).userId(1L).storeUid(remainingStoreUid).build()));
+
+    adminPartnerService.removeStoreFromPartner(publicId, storeUid);
+
+    verify(userStoreRepository).deleteByUserIdAndStoreUid(1L, storeUid);
+    verify(userRoleTransitionService, never()).changeUserRole(any(), any());
+  }
+
+  @Test
+  void shouldPromoteClientToMerchantWhenAddingStore() {
+    UUID clientPublicId = UUID.randomUUID();
+    UUID storeUid = UUID.randomUUID();
+    Client client =
+        Client.builder()
+            .id(2L)
+            .publicId(clientPublicId)
+            .email("client@example.com")
+            .firstName("Alice")
+            .lastName("Martin")
+            .role(UserRole.CLIENT)
+            .clientCode("CL12345")
+            .build();
+    when(userRepository.findByPublicId(clientPublicId)).thenReturn(Optional.of(client));
+    when(userStoreRepository.existsByUserIdAndStoreUid(2L, storeUid)).thenReturn(false);
+
+    adminPartnerService.addStoreToPartner(clientPublicId, new AdminAddStoreRequest(storeUid));
+
+    verify(userRoleTransitionService).changeUserRole(2L, UserRole.MERCHANT);
+    verify(userStoreRepository).save(any(UserStore.class));
+  }
+
+  @Test
+  void shouldKeepAdminRoleWhenAddingStoreToAdmin() {
+    UUID adminPublicId = UUID.randomUUID();
+    UUID storeUid = UUID.randomUUID();
+    Admin admin =
+        Admin.builder()
+            .id(3L)
+            .publicId(adminPublicId)
+            .email("admin@example.com")
+            .firstName("Root")
+            .lastName("Admin")
+            .role(UserRole.ADMIN)
+            .build();
+    when(userRepository.findByPublicId(adminPublicId)).thenReturn(Optional.of(admin));
+    when(userStoreRepository.existsByUserIdAndStoreUid(3L, storeUid)).thenReturn(false);
+
+    adminPartnerService.addStoreToPartner(adminPublicId, new AdminAddStoreRequest(storeUid));
+
+    verify(userRoleTransitionService, never()).changeUserRole(any(), any());
+    verify(userStoreRepository).save(any(UserStore.class));
   }
 }

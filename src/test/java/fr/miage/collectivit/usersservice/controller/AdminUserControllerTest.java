@@ -85,7 +85,7 @@ class AdminUserControllerTest {
 
     PageResponse<UserResponse> pageResponse = PageResponse.of(List.of(user), 0, 20, 1, 1);
 
-    when(adminUserService.getUsers(any(), any(), any(), any(), any(), any(Pageable.class)))
+    when(adminUserService.getUsers(any(), any(), any(), any(), any(), any(), any(Pageable.class)))
         .thenReturn(pageResponse);
 
     mockMvc
@@ -100,6 +100,39 @@ class AdminUserControllerTest {
         .andExpect(jsonPath("$.content[0].isLocked").value(false))
         .andExpect(jsonPath("$.totalElements").value(1))
         .andExpect(jsonPath("$.totalPages").value(1));
+  }
+
+  @Test
+  void shouldListEligibleUsersForStoreAssignmentWhenAdmin() throws Exception {
+    UUID publicId = UUID.randomUUID();
+    UserResponse user =
+        UserResponse.builder()
+            .id(publicId)
+            .email("alice@example.com")
+            .firstName("Alice")
+            .lastName("Dupont")
+            .role(UserRole.CLIENT)
+            .isLocked(false)
+            .storesCount(0)
+            .build();
+
+    PageResponse<UserResponse> pageResponse = PageResponse.of(List.of(user), 0, 10, 1, 1);
+
+    when(adminUserService.getUsers(
+            eq("alice"), any(), any(), eq(true), any(), any(), any(Pageable.class)))
+        .thenReturn(pageResponse);
+
+    mockMvc
+        .perform(
+            get("/api/v1/admin/users")
+                .requestAttr(JwtAuthInterceptor.ATTR_USER_ROLE, "ADMIN")
+                .param("query", "alice")
+                .param("eligibleForStore", "true")
+                .param("page", "0")
+                .param("size", "10"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].id").value(publicId.toString()))
+        .andExpect(jsonPath("$.content[0].storesCount").value(0));
   }
 
   @Test
