@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -57,6 +58,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
   @Override
   @Transactional
+  @CacheEvict(value = "userProfiles", key = "#id")
   public UserResponse updateUser(UUID id, AdminUserUpdateRequest request) {
     User user = findUserOrThrow(id);
     applyProfileUpdates(user, request);

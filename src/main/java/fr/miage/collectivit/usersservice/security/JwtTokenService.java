@@ -7,9 +7,7 @@ import fr.miage.collectivit.usersservice.service.TokenRevocationService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
-import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -21,7 +19,6 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
-import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,15 +28,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class JwtTokenService {
 
-  private static final int MIN_KEY_BYTES = 32;
   private static final int MIN_RSA_KEY_BYTES = 500;
   private static final int MILLIS_IN_SECOND = 1000;
 
-  @Value("${application.security.jwt.private-key:${application.security.jwt.secret-key:}}")
+  @Value("${application.security.jwt.private-key:}")
   private String privateKeyString;
-
-  @Value("${application.security.jwt.secret-key:}")
-  private String secretKeyString;
 
   @Value("${application.security.jwt.public-key:}")
   private String publicKeyString;
@@ -58,32 +51,20 @@ public class JwtTokenService {
 
   private PrivateKey rsaPrivateKey;
   private PublicKey rsaPublicKey;
-  private SecretKey hmacSecretKey;
-  private boolean asymmetric;
 
   @PostConstruct
   public void init() {
-    resolveKeyConfiguration();
-    String cleanKey = cleanKeyPem(privateKeyString);
-
-    if (initRsaKey(cleanKey)) {
-      this.asymmetric = true;
-      log.info("JWT Token Service initialized with asymmetric algorithm RS256.");
-    } else {
-      initHmacKey(cleanKey);
-      this.asymmetric = false;
-      log.info("JWT Token Service initialized with symmetric algorithm HS256.");
-    }
-  }
-
-  private void resolveKeyConfiguration() {
-    if ((privateKeyString == null || privateKeyString.isBlank())
-        && (secretKeyString != null && !secretKeyString.isBlank())) {
-      privateKeyString = secretKeyString;
-    }
     if (privateKeyString == null || privateKeyString.isBlank()) {
       throw new IllegalArgumentException(
-          "No JWT signing key (application.security.jwt.private-key or secret-key) configured.");
+          "No RSA private key (application.security.jwt.private-key) configured.");
+    }
+    String cleanKey = cleanKeyPem(privateKeyString);
+    if (!initRsaKey(cleanKey)) {
+      throw new IllegalArgumentException(
+          "Invalid RSA PKCS#8 private key (RS256 strict mode enabled).");
+    }
+    if (log.isInfoEnabled()) {
+      log.info("JWT Token Service initialized with asymmetric algorithm RS256.");
     }
   }
 
@@ -103,28 +84,13 @@ public class JwtTokenService {
         byte[] pubBytes = Base64.getDecoder().decode(cleanKeyPem(publicKeyString));
         this.rsaPublicKey = kf.generatePublic(new X509EncodedKeySpec(pubBytes));
       }
-      return true;
+      return this.rsaPrivateKey != null && this.rsaPublicKey != null;
     } catch (GeneralSecurityException | IllegalArgumentException ex) {
-      if (log.isDebugEnabled()) {
-        log.debug(
-            "Key is not a valid PKCS#8 RSA key, falling back to symmetric HMAC key: {}",
-            ex.getMessage());
+      if (log.isErrorEnabled()) {
+        log.error("Failed to initialize RSA key for RS256: {}", ex.getMessage());
       }
       return false;
     }
-  }
-
-  private void initHmacKey(String cleanKey) {
-    byte[] hmacBytes;
-    try {
-      hmacBytes = Base64.getDecoder().decode(cleanKey);
-      if (hmacBytes.length < MIN_KEY_BYTES) {
-        hmacBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
-      }
-    } catch (IllegalArgumentException notBase64) {
-      hmacBytes = cleanKey.getBytes(StandardCharsets.UTF_8);
-    }
-    this.hmacSecretKey = Keys.hmacShaKeyFor(hmacBytes);
   }
 
   public String generateToken(User user) {
@@ -154,23 +120,13 @@ public class JwtTokenService {
       builder.claim("clientCode", client.getClientCode());
     }
 
-    if (asymmetric && rsaPrivateKey != null) {
-      return builder.signWith(rsaPrivateKey, Jwts.SIG.RS256).compact();
-    } else {
-      return builder.signWith(hmacSecretKey).compact();
-    }
+    return builder.signWith(rsaPrivateKey, Jwts.SIG.RS256).compact();
   }
 
   public Claims validateAndExtractClaims(String token) {
     Claims claims;
     try {
-      if (asymmetric && rsaPublicKey != null) {
-        claims =
-            Jwts.parser().verifyWith(rsaPublicKey).build().parseSignedClaims(token).getPayload();
-      } else {
-        claims =
-            Jwts.parser().verifyWith(hmacSecretKey).build().parseSignedClaims(token).getPayload();
-      }
+      claims = Jwts.parser().verifyWith(rsaPublicKey).build().parseSignedClaims(token).getPayload();
     } catch (JwtException | IllegalArgumentException ex) {
       throw new UnauthorizedException(
           "Invalid or expired authentication token: " + ex.getMessage(), ex);
@@ -190,7 +146,7 @@ public class JwtTokenService {
   }
 
   public boolean isAsymmetric() {
-    return asymmetric;
+    return true;
   }
 
   public String getKeyId() {
@@ -198,7 +154,7 @@ public class JwtTokenService {
   }
 
   public java.util.Map<String, Object> getJwks() {
-    if (asymmetric && rsaPublicKey instanceof java.security.interfaces.RSAPublicKey rsaPub) {
+    if (rsaPublicKey instanceof java.security.interfaces.RSAPublicKey rsaPub) {
       String n =
           java.util.Base64.getUrlEncoder()
               .withoutPadding()

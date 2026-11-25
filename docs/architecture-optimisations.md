@@ -15,6 +15,12 @@ Ce document consigne l'ensemble des optimisations architecturales et techniques 
 | **OPT-05** | Traçabilité Distribuée OpenTelemetry & W3C Trace Context | Observabilité & Diagnostic Inter-services | TOGAF Principle: *Operational Visibility & End-to-End Tracing* | ✅ Appliqué & Vérifié |
 | **OPT-06** | Optimisation HikariCP & JDBC Metadata Bypass | Performance Base de Données & Démarrage | TOGAF Principle: *Resource Sizing & Database Performance* | ✅ Appliqué & Vérifié |
 | **OPT-07** | Durcissement des Secrets de Base de Données | Sécurité & Conformité Cloud | TOGAF Principle 8: *Security & Credential Isolation* (12-Factor III) | ✅ Appliqué & Vérifié |
+| **OPT-08** | Correction Imbrication `spring.datasource.hikari`, `default_batch_fetch_size` & Actuator `metrics` | Performance Base de Données & Observabilité | TOGAF Principle: *Resource Sizing & Operational Visibility* / Well-Architected (*Performance Efficiency*) | ✅ Appliqué & Vérifié |
+| **OPT-09** | Mise en Cache des Jetons JWT Révoqués (`@EnableCaching` / `TokenRevocationServiceImpl`) | Performance Réseau & Sécurité | TOGAF Principle: *Resource Optimization & Low Latency* / OWASP API2:2023 | ✅ Appliqué & Vérifié |
+| **OPT-10** | Optimisation du Build Conteneur Local (Layered JAR, `.dockerignore` & `ENTRYPOINT` exec) | Déploiement & Industrialisation (Docker) | TOGAF Principle: *Resource Optimization & Fast Delivery* / 12-Factor V & IX | ✅ Appliqué & Vérifié |
+| **OPT-11** | Durcissement Cryptographique JWT (RS256 Strict dans `JwtTokenService`) | Sécurité & Confiance Numérique | TOGAF Principle 8: *Security & Defense in Depth* / OWASP API2:2023 | ✅ Appliqué & Vérifié |
+| **OPT-12** | Factorisation DRY de `getPartners` (`UserProfileServiceImpl` $\rightarrow$ `AdminPartnerService`) | Qualité Logicielle & Maintenabilité | TOGAF Principle: *Simplicity & Maintainability Baseline* (DRY / SRP) | ✅ Appliqué & Vérifié |
+| **OPT-13** | Mise en Cache des Profils Utilisateurs (`@Cacheable("userProfiles")`) | Performance Base de Données | TOGAF Principle: *Resource Optimization & Fast Response Times* | ✅ Appliqué & Vérifié |
 
 ---
 
@@ -116,3 +122,74 @@ Ce document consigne l'ensemble des optimisations architecturales et techniques 
   > *« Les identifiants et secrets d'infrastructure ne doivent jamais comporter de valeur par défaut prévisible dans les descripteurs de configuration applicative. »*
 * **Gains :**
   - Prévention de tout déploiement involontaire avec des identifiants par défaut en production.
+
+---
+
+### OPT-08 — Correction Imbrication `spring.datasource.hikari`, `default_batch_fetch_size` & Actuator `metrics`
+
+* **Problème :** Dans `application.yaml`, la section `hikari:` était imbriquée sous `spring.jpa` au lieu de `spring.datasource`, rendant inactifs les paramètres du pool (`maximum-pool-size: 10`, `minimum-idle: 2`, `idle-timeout: 30000`, `connection-timeout: 5000`). De plus, `default_batch_fetch_size` et l'endpoint Actuator `metrics` (critère DoD **SLE-266** / **SLE-267**) étaient absents.
+* **Solution :**
+  - Déplacement de `hikari:` sous `spring.datasource` avec `pool-name: UsersServiceHikariCP`.
+  - Ajout de `hibernate.default_batch_fetch_size: 50` pour éliminer les requêtes N+1 sur les collections associées.
+  - Exposition de `metrics` dans `management.endpoints.web.exposure.include: health,info,metrics`.
+* **Règle d'Architecture Associée :**
+  > **TOGAF Principle — Resource Sizing & Operational Visibility / AWS Well-Architected (Performance Efficiency)**  
+  > *« Les paramètres de dimensionnement des pools de connexions doivent être effectivement appliqués et les métriques d'exécution exposées pour valider les temps de réponse p95/p99. »*
+
+---
+
+### OPT-09 — Mise en Cache des Jetons JWT Révoqués (`TokenRevocationServiceImpl`)
+
+* **Problème :** `TokenRevocationServiceImpl.isRevoked(jti)` (appelé par `JwtAuthInterceptor` à chaque requête authentifiée) et `getActiveRevokedJtis()` (appelé toutes les 15s par les autres microservices via `/v1/auth/revoked-tokens`) interrogeaient PostgreSQL systématiquement.
+* **Solution :**
+  - Activation de `@EnableCaching` avec un `ConcurrentMapCacheManager("revokedJtis", "revokedTokensList")` dans `UsersServiceApplication`.
+  - Ajout de `@Cacheable` sur `isRevoked` et `getActiveRevokedJtis`, et `@CacheEvict(allEntries = true)` sur `revokeToken` et `purgeExpiredTokens`.
+* **Règle d'Architecture Associée :**
+  > **TOGAF Principle — Resource Optimization & Low Latency / OWASP API2:2023**  
+  > *« Les vérifications de sécurité transverses à forte fréquence de lecture doivent être servies depuis un cache en mémoire avec invalidation immédiate lors des mutations. »*
+
+---
+
+### OPT-10 — Optimisation du Build Conteneur Local (Layered JAR, `.dockerignore` & `ENTRYPOINT` exec)
+
+* **Problème :** `.dockerignore` incluait `src/test/`, `docs/` et `bruno/` dans le contexte Docker ; `Dockerfile` compilait les tests, produisait un Fat JAR monolithique, utilisait `sh -c` et embarquait un entraînement AppCDS non exploité (et instable avec `JarLauncher` sur Temurin 21 `linux-aarch64`).
+* **Solution :**
+  - Durcissement de `.dockerignore`, compilation ciblée (`COPY src/main`, `-Dmaven.test.skip=true`), extraction des 4 couches Spring Boot (`jarmode=tools`), `ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]` (`JAVA_TOOL_OPTIONS`) et `HEALTHCHECK` sur `/actuator/health/liveness`.
+* **Règle d'Architecture Associée :**
+  > **TOGAF Principle — Resource Optimization & Fast Delivery / 12-Factor App V & IX**  
+  > *« Les artefacts conteneurisés doivent séparer les couches immuables du code applicatif, minimiser le contexte de construction et exécuter la JVM directement en PID 1. »*
+
+---
+
+### OPT-11 — Durcissement Cryptographique JWT (RS256 Strict)
+
+* **Problème :** `JwtTokenService` conservait un mode de repli symétrique HMAC (`application.security.jwt.secret-key`) si aucune clé RSA n'était fournie, divergeant du durcissement RS256 strict appliqué sur `Sales-Service`, `Store-Service` et `Loyalty-Service`.
+* **Solution :**
+  - Suppression complète du fallback HMAC (`secretKeyString`, `hmacSecretKey`, `initHmacKey`) dans `JwtTokenService`.
+  - Validation stricte d'une clé privée RSA PKCS#8 (RS256) au démarrage et mise à jour de `JwtTokenServiceTest` avec génération dynamique de bi-clé RSA 2048 bits.
+* **Règle d'Architecture Associée :**
+  > **TOGAF Principle 8 — Security & Defense in Depth / OWASP API2:2023**  
+  > *« L'émetteur central d'identités ne doit tolérer aucune rétrogradation vers un algorithme symétrique partagé. »*
+
+---
+
+### OPT-12 — Factorisation DRY de `getPartners`
+
+* **Problème :** La logique de recherche paginée et d'agrégation des compteurs de commerces (`getPartners`, `clampLimit`, `fetchStoreCounts`, `mapToPartnerResponse`) était dupliquée à l'identique entre `AdminPartnerServiceImpl` et `UserProfileServiceImpl`.
+* **Solution :**
+  - Délégation de `UserProfileServiceImpl.getPartners(...)` vers `AdminPartnerService.getPartners(...)` et suppression des méthodes dupliquées.
+* **Règle d'Architecture Associée :**
+  > **TOGAF Principle — Simplicity & Maintainability Baseline (DRY / SRP)**  
+  > *« Toute règle métier ou requête d'agrégation doit posséder une source de vérité unique afin d'éviter les divergences comportementales. »*
+
+---
+
+### OPT-13 — Mise en Cache des Profils Utilisateurs (`userProfiles`)
+
+* **Problème :** `UserProfileServiceImpl.getUserProfile(UUID)` interrogeait PostgreSQL à chaque consultation de profil.
+* **Solution :**
+  - Ajout du cache `userProfiles` dans `UsersServiceApplication` (`ConcurrentMapCacheManager`).
+  - Annotation `@Cacheable(value = "userProfiles", key = "#userId")` sur `getUserProfile(UUID)` et `@CacheEvict(value = "userProfiles", key = "#userId")` sur toutes les mutations (`updateUserProfile`, `deleteUserProfile`, `addVehicle`, `removeVehicle`, `updateVehicle`, `AdminUserServiceImpl.updateUser`).
+* **Règle d'Architecture Associée :**
+  > **TOGAF Principle — Resource Optimization & Fast Response Times**  
+  > *« Les lectures fréquentes d'entités profil doivent être servies depuis le cache applicatif avec invalidation immédiate lors des mises à jour. »*
