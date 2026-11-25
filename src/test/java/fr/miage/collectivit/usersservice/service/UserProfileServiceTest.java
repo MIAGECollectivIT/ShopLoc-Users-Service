@@ -41,11 +41,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class UserProfileServiceTest {
 
-  @Mock private UserRepository userRepository;
-  @Mock private UserStoreRepository userStoreRepository;
-  @Mock private AdminPartnerService adminPartnerService;
+  @Mock
+  private UserRepository userRepository;
+  @Mock
+  private UserStoreRepository userStoreRepository;
+  @Mock
+  private AdminPartnerService adminPartnerService;
 
-  @InjectMocks private UserProfileServiceImpl userProfileService;
+  @InjectMocks
+  private UserProfileServiceImpl userProfileService;
 
   private UUID userId;
   private Client existingUser;
@@ -53,19 +57,18 @@ class UserProfileServiceTest {
   @BeforeEach
   void setUp() {
     userId = UUID.randomUUID();
-    existingUser =
-        Client.builder()
-            .id(1L)
-            .publicId(userId)
-            .email("user@example.com")
-            .passwordHash("$2a$12$fakeHash")
-            .firstName("Sophie")
-            .lastName("Martin")
-            .birthDate(LocalDate.of(1988, 4, 12))
-            .clientCode("sM88kL9")
-            .pickupLocation("Commerce Partenaire A")
-            .licensePlates(new ArrayList<>(List.of("XX-123-YY")))
-            .build();
+    existingUser = Client.builder()
+        .id(1L)
+        .publicId(userId)
+        .email("user@example.com")
+        .passwordHash("$2a$12$fakeHash")
+        .firstName("Sophie")
+        .lastName("Martin")
+        .birthDate(LocalDate.of(1988, 4, 12))
+        .clientCode("sM88kL9")
+        .pickupLocation("Commerce Partenaire A")
+        .licensePlates(new ArrayList<>(List.of("XX-123-YY")))
+        .build();
   }
 
   @Test
@@ -95,13 +98,12 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    UserUpdateRequest updateRequest =
-        UserUpdateRequest.builder()
-            .firstName("Sophie-Anne")
-            .lastName("Martin-Dupont")
-            .birthDate(LocalDate.of(1988, 4, 12))
-            .pickupLocation("Mairie Annexe")
-            .build();
+    UserUpdateRequest updateRequest = UserUpdateRequest.builder()
+        .firstName("Sophie-Anne")
+        .lastName("Martin-Dupont")
+        .birthDate(LocalDate.of(1988, 4, 12))
+        .pickupLocation("Mairie Annexe")
+        .build();
 
     UserResponse response = userProfileService.updateUserProfile(userId, updateRequest);
 
@@ -204,8 +206,7 @@ class UserProfileServiceTest {
   void shouldLinkStoreToUserUsingPublicAndStoreUids() {
     UUID merchantPublicId = UUID.randomUUID();
     UUID storeUid = UUID.randomUUID();
-    Merchant merchant =
-        Merchant.builder().id(10L).publicId(merchantPublicId).email("m@example.com").build();
+    Merchant merchant = Merchant.builder().id(10L).publicId(merchantPublicId).email("m@example.com").build();
     when(userRepository.findByPublicId(merchantPublicId)).thenReturn(Optional.of(merchant));
     when(userStoreRepository.existsByUserIdAndStoreUid(10L, storeUid)).thenReturn(false);
 
@@ -217,24 +218,22 @@ class UserProfileServiceTest {
   @Test
   void shouldListPartnersWithoutInternalId() {
     UUID merchantPublicId = UUID.randomUUID();
-    Merchant merchant =
-        Merchant.builder()
-            .id(10L)
-            .publicId(merchantPublicId)
-            .firstName("Jean")
-            .lastName("Dupont")
-            .email("m@example.com")
-            .role(UserRole.MERCHANT)
-            .build();
-    PartnerResponse expectedPartner =
-        PartnerResponse.builder()
-            .publicId(merchantPublicId)
-            .name("Jean Dupont")
-            .email("m@example.com")
-            .companyName("Boutique Dupont")
-            .role("MERCHANT")
-            .existingStoresCount(2)
-            .build();
+    Merchant merchant = Merchant.builder()
+        .id(10L)
+        .publicId(merchantPublicId)
+        .firstName("Jean")
+        .lastName("Dupont")
+        .email("m@example.com")
+        .role(UserRole.MERCHANT)
+        .build();
+    PartnerResponse expectedPartner = PartnerResponse.builder()
+        .publicId(merchantPublicId)
+        .name("Jean Dupont")
+        .email("m@example.com")
+        .companyName("Boutique Dupont")
+        .role("MERCHANT")
+        .existingStoresCount(2)
+        .build();
     when(adminPartnerService.getPartners(null, 20)).thenReturn(List.of(expectedPartner));
 
     List<PartnerResponse> partners = userProfileService.getPartners(null, 20);
@@ -247,15 +246,14 @@ class UserProfileServiceTest {
   @Test
   void shouldGetCurrentUserProfileForMerchantWithoutClientFields() {
     UUID merchantId = UUID.randomUUID();
-    Merchant merchant =
-        Merchant.builder()
-            .id(2L)
-            .publicId(merchantId)
-            .email("merchant@example.com")
-            .firstName("Jean")
-            .lastName("Commercant")
-            .birthDate(LocalDate.of(1985, 5, 10))
-            .build();
+    Merchant merchant = Merchant.builder()
+        .id(2L)
+        .publicId(merchantId)
+        .email("merchant@example.com")
+        .firstName("Jean")
+        .lastName("Commercant")
+        .birthDate(LocalDate.of(1985, 5, 10))
+        .build();
 
     when(userRepository.findByPublicId(merchantId)).thenReturn(Optional.of(merchant));
 
@@ -275,15 +273,14 @@ class UserProfileServiceTest {
   @Test
   void shouldGetCurrentUserProfileForAdminWithoutClientFields() {
     UUID adminId = UUID.randomUUID();
-    Admin admin =
-        Admin.builder()
-            .id(3L)
-            .publicId(adminId)
-            .email("admin@example.com")
-            .firstName("Super")
-            .lastName("Admin")
-            .birthDate(LocalDate.of(1980, 1, 1))
-            .build();
+    Admin admin = Admin.builder()
+        .id(3L)
+        .publicId(adminId)
+        .email("admin@example.com")
+        .firstName("Super")
+        .lastName("Admin")
+        .birthDate(LocalDate.of(1980, 1, 1))
+        .build();
 
     when(userRepository.findByPublicId(adminId)).thenReturn(Optional.of(admin));
 
@@ -343,8 +340,7 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    VehicleResponse response =
-        userProfileService.addVehicle(userId, new VehicleRequest("ab-123-cd"));
+    VehicleResponse response = userProfileService.addVehicle(userId, new VehicleRequest("ab-123-cd"));
 
     assertThat(response.licensePlate()).isEqualTo("AB-123-CD");
     assertThat(existingUser.getLicensePlates()).contains("AB-123-CD");
@@ -358,7 +354,7 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(merchantId)).thenReturn(Optional.of(merchant));
 
     assertThatThrownBy(
-            () -> userProfileService.addVehicle(merchantId, new VehicleRequest("AB-123-CD")))
+        () -> userProfileService.addVehicle(merchantId, new VehicleRequest("AB-123-CD")))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("clients");
   }
@@ -407,8 +403,7 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    VehicleResponse response =
-        userProfileService.updateVehicle(userId, "xx-123-yy", new VehicleRequest("zz-789-ww"));
+    VehicleResponse response = userProfileService.updateVehicle(userId, "xx-123-yy", new VehicleRequest("zz-789-ww"));
 
     assertThat(response.licensePlate()).isEqualTo("ZZ-789-WW");
     assertThat(existingUser.getLicensePlates()).containsExactly("ZZ-789-WW");
@@ -420,9 +415,8 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
 
     assertThatThrownBy(
-            () ->
-                userProfileService.updateVehicle(
-                    userId, "unknown-plate", new VehicleRequest("zz-789-ww")))
+        () -> userProfileService.updateVehicle(
+            userId, "unknown-plate", new VehicleRequest("zz-789-ww")))
         .isInstanceOf(VehicleNotFoundException.class);
   }
 
@@ -432,9 +426,8 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
 
     assertThatThrownBy(
-            () ->
-                userProfileService.updateVehicle(
-                    userId, "XX-123-YY", new VehicleRequest("bb-222-bb")))
+        () -> userProfileService.updateVehicle(
+            userId, "XX-123-YY", new VehicleRequest("bb-222-bb")))
         .isInstanceOf(VehicleAlreadyExistsException.class);
   }
 
@@ -442,8 +435,7 @@ class UserProfileServiceTest {
   void shouldGetCurrentUserVehicles() {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
 
-    List<VehicleResponse> vehicles =
-        userProfileService.getCurrentUserVehicles(userId.toString(), null);
+    List<VehicleResponse> vehicles = userProfileService.getCurrentUserVehicles(userId.toString(), null);
 
     assertThat(vehicles).hasSize(1);
     assertThat(vehicles.get(0).licensePlate()).isEqualTo("XX-123-YY");
@@ -454,9 +446,8 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    VehicleResponse response =
-        userProfileService.addCurrentUserVehicle(
-            userId.toString(), null, new VehicleRequest("DD-444-EE"));
+    VehicleResponse response = userProfileService.addCurrentUserVehicle(
+        userId.toString(), null, new VehicleRequest("DD-444-EE"));
 
     assertThat(response.licensePlate()).isEqualTo("DD-444-EE");
     assertThat(existingUser.getLicensePlates()).contains("DD-444-EE");
@@ -467,9 +458,8 @@ class UserProfileServiceTest {
     when(userRepository.findByPublicId(userId)).thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    VehicleResponse response =
-        userProfileService.updateCurrentUserVehicle(
-            userId.toString(), null, "XX-123-YY", new VehicleRequest("EE-555-FF"));
+    VehicleResponse response = userProfileService.updateCurrentUserVehicle(
+        userId.toString(), null, "XX-123-YY", new VehicleRequest("EE-555-FF"));
 
     assertThat(response.licensePlate()).isEqualTo("EE-555-FF");
     assertThat(existingUser.getLicensePlates()).containsExactly("EE-555-FF");
