@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # ==========================================
 # Stage 1: Build the application (Maven + Eclipse Temurin 21)
 # ==========================================
@@ -6,11 +7,12 @@ WORKDIR /build
 
 # Cache Maven dependencies (BuildKit Cache Mount)
 COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn -B dependency:resolve
+RUN --mount=type=cache,target=/root/.m2 mvn -B -q dependency:resolve-plugins dependency:resolve
 
-# Compile and package the runnable JAR
-COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 mvn -B clean package -DskipTests
+# Compile main sources and extract Spring Boot layers (Layered JAR)
+COPY src/main ./src/main
+RUN --mount=type=cache,target=/root/.m2 mvn -B -o package -Dmaven.test.skip=true \
+    && java -Djarmode=tools -jar target/*.jar extract --layers --launcher --destination extracted
 
 # ==========================================
 # Stage 2: Minimal runtime image ARM64 / Multi-Arch
@@ -19,26 +21,23 @@ FROM eclipse-temurin:21-jre-alpine AS runner
 WORKDIR /app
 
 # Security: Execute as a dedicated non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup && chown appuser:appgroup /app
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Copy the executable JAR from the builder stage
-COPY --from=builder --chown=appuser:appgroup /build/target/*.jar app.jar
+# Copy extracted Spring Boot layers from least-frequently to most-frequently changed
+COPY --from=builder --chown=appuser:appgroup /build/extracted/dependencies/ ./
+COPY --from=builder --chown=appuser:appgroup /build/extracted/spring-boot-loader/ ./
+COPY --from=builder --chown=appuser:appgroup /build/extracted/snapshot-dependencies/ ./
+COPY --from=builder --chown=appuser:appgroup /build/extracted/application/ ./
 
 USER appuser
-
-# AppCDS Training at container build time (Architecture-dependent, Non-blocking)
-RUN java -XX:ArchiveClassesAtExit=/app/app.jsa \
-      -Dspring.context.exit=onRefresh \
-      -Dspring.flyway.enabled=false \
-      -Dspring.jpa.hibernate.ddl-auto=none \
-      -Dspring.jpa.properties.hibernate.boot.allow_jdbc_metadata_access=false \
-      -jar app.jar > /tmp/cds-training.log 2>&1 \
-    || (echo "AppCDS training failed (non bloquant):" && tail -n 20 /tmp/cds-training.log)
 
 # Standard listening port
 EXPOSE 8080
 
-# JVM options optimized for containers (K3s / cgroups) + AppCDS
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
+# JVM options natively picked up by OpenJDK without shell wrapper (PID 1 = java)
+ENV JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
 
-ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
+HEALTHCHECK --interval=15s --timeout=3s --start-period=25s --retries=3 \
+  CMD wget -q --spider http://localhost:8080/actuator/health/liveness || exit 1
+
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

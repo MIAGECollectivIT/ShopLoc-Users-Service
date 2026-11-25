@@ -7,7 +7,6 @@ import fr.miage.collectivit.usersservice.dto.VehicleRequest;
 import fr.miage.collectivit.usersservice.dto.VehicleResponse;
 import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.entity.User;
-import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.entity.UserStore;
 import fr.miage.collectivit.usersservice.exception.ForbiddenException;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
@@ -15,17 +14,16 @@ import fr.miage.collectivit.usersservice.exception.VehicleAlreadyExistsException
 import fr.miage.collectivit.usersservice.exception.VehicleNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
+import fr.miage.collectivit.usersservice.service.AdminPartnerService;
 import fr.miage.collectivit.usersservice.service.UserProfileService;
 import fr.miage.collectivit.usersservice.validation.FrenchLicensePlateValidator;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,11 +33,12 @@ import org.springframework.transaction.annotation.Transactional;
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.GodClass"})
 public class UserProfileServiceImpl implements UserProfileService {
 
-  private static final int DEFAULT_LIMIT = 20;
-  private static final int MAX_LIMIT = 100;
+  private static final String CACHE_USER_PROFILES = "userProfiles";
+  private static final String CACHE_KEY_USER_ID = "#userId";
 
   private final UserRepository userRepository;
   private final UserStoreRepository userStoreRepository;
+  private final AdminPartnerService adminPartnerService;
 
   @Override
   @Transactional(readOnly = true)
@@ -50,6 +49,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
   @Override
   @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_USER_PROFILES, key = CACHE_KEY_USER_ID)
   public UserResponse getUserProfile(UUID userId) {
     User user = findUserByPublicId(userId);
     return UserResponse.fromEntity(user);
@@ -76,60 +76,12 @@ public class UserProfileServiceImpl implements UserProfileService {
   @Override
   @Transactional(readOnly = true)
   public List<PartnerResponse> getPartners(String query, int limit) {
-    int max = clampLimit(limit);
-    String q = query != null ? query.trim() : "";
-
-    List<User> merchants =
-        userRepository.searchByRoleAndQuery(
-            UserRole.MERCHANT, q, PageRequest.of(0, max, Sort.by("id").ascending()));
-
-    if (merchants.isEmpty()) {
-      return List.of();
-    }
-
-    List<Long> merchantIds = merchants.stream().map(User::getId).toList();
-    Map<Long, Integer> storeCounts = fetchStoreCounts(merchantIds);
-
-    return merchants.stream()
-        .map(u -> mapToPartnerResponse(u, storeCounts.getOrDefault(u.getId(), 0)))
-        .toList();
-  }
-
-  private int clampLimit(int limit) {
-    return (limit > 0 && limit <= MAX_LIMIT) ? limit : DEFAULT_LIMIT;
-  }
-
-  private Map<Long, Integer> fetchStoreCounts(List<Long> merchantIds) {
-    Map<Long, Integer> storeCounts = new HashMap<>();
-    for (Object[] row : userStoreRepository.countStoresByUserIds(merchantIds)) {
-      if (row != null
-          && row.length >= 2
-          && row[0] instanceof Number uId
-          && row[1] instanceof Number count) {
-        storeCounts.put(uId.longValue(), count.intValue());
-      }
-    }
-    return storeCounts;
-  }
-
-  private PartnerResponse mapToPartnerResponse(User u, int storeCount) {
-    String fullName = (u.getFirstName() + " " + u.getLastName()).trim();
-    String companyName =
-        (u.getPickupLocation() != null && !u.getPickupLocation().isBlank())
-            ? u.getPickupLocation()
-            : "Boutique " + u.getLastName();
-    return PartnerResponse.builder()
-        .publicId(u.getPublicId())
-        .name(fullName)
-        .email(u.getEmail())
-        .companyName(companyName)
-        .role(u.getRole().name())
-        .existingStoresCount(storeCount)
-        .build();
+    return adminPartnerService.getPartners(query, limit);
   }
 
   @Override
   @Transactional
+  @CacheEvict(value = CACHE_USER_PROFILES, key = CACHE_KEY_USER_ID)
   public UserResponse updateUserProfile(UUID userId, UserUpdateRequest request) {
     User user = findUserByPublicId(userId);
     user.setFirstName(request.firstName().trim());
@@ -148,6 +100,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CACHE_USER_PROFILES, key = CACHE_KEY_USER_ID)
   public void deleteUserProfile(UUID userId) {
     User user = findUserByPublicId(userId);
     userRepository.delete(user);
@@ -179,6 +132,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CACHE_USER_PROFILES, key = CACHE_KEY_USER_ID)
   public VehicleResponse addVehicle(UUID userId, VehicleRequest request) {
     Client client = getClientOrThrow(userId);
     String plate = FrenchLicensePlateValidator.normalize(request.licensePlate());
@@ -198,6 +152,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CACHE_USER_PROFILES, key = CACHE_KEY_USER_ID)
   public void removeVehicle(UUID userId, String vehicleId) {
     Client client = getClientOrThrow(userId);
     if (client.getLicensePlates() == null || client.getLicensePlates().isEmpty()) {
@@ -216,6 +171,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CACHE_USER_PROFILES, key = CACHE_KEY_USER_ID)
   public VehicleResponse updateVehicle(UUID userId, String vehicleId, VehicleRequest request) {
     Client client = getClientOrThrow(userId);
     if (client.getLicensePlates() == null || client.getLicensePlates().isEmpty()) {

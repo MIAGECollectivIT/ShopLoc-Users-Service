@@ -3,7 +3,6 @@ package fr.miage.collectivit.usersservice.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,13 +37,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class UserProfileServiceTest {
 
   @Mock private UserRepository userRepository;
   @Mock private UserStoreRepository userStoreRepository;
+  @Mock private AdminPartnerService adminPartnerService;
 
   @InjectMocks private UserProfileServiceImpl userProfileService;
 
@@ -227,10 +226,16 @@ class UserProfileServiceTest {
             .email("m@example.com")
             .role(UserRole.MERCHANT)
             .build();
-    when(userRepository.searchByRoleAndQuery(eq(UserRole.MERCHANT), eq(""), any(Pageable.class)))
-        .thenReturn(List.of(merchant));
-    when(userStoreRepository.countStoresByUserIds(List.of(10L)))
-        .thenReturn(List.<Object[]>of(new Object[] {10L, 2L}));
+    PartnerResponse expectedPartner =
+        PartnerResponse.builder()
+            .publicId(merchantPublicId)
+            .name("Jean Dupont")
+            .email("m@example.com")
+            .companyName("Boutique Dupont")
+            .role("MERCHANT")
+            .existingStoresCount(2)
+            .build();
+    when(adminPartnerService.getPartners(null, 20)).thenReturn(List.of(expectedPartner));
 
     List<PartnerResponse> partners = userProfileService.getPartners(null, 20);
 

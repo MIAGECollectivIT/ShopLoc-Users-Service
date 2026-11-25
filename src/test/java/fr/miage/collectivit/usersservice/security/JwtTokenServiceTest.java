@@ -7,7 +7,10 @@ import fr.miage.collectivit.usersservice.entity.Admin;
 import fr.miage.collectivit.usersservice.entity.Client;
 import fr.miage.collectivit.usersservice.exception.UnauthorizedException;
 import io.jsonwebtoken.Claims;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,10 +22,16 @@ class JwtTokenServiceTest {
   private JwtTokenService jwtTokenService;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
+    KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+    kpg.initialize(2048);
+    KeyPair keyPair = kpg.generateKeyPair();
+    String privateKeyBase64 = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+    String publicKeyBase64 = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+
     jwtTokenService = new JwtTokenService();
-    ReflectionTestUtils.setField(
-        jwtTokenService, "secretKeyString", "super-secret-key-that-is-at-least-256-bits-long!");
+    ReflectionTestUtils.setField(jwtTokenService, "privateKeyString", privateKeyBase64);
+    ReflectionTestUtils.setField(jwtTokenService, "publicKeyString", publicKeyBase64);
     ReflectionTestUtils.setField(jwtTokenService, "issuer", "shoploc-auth-service");
     ReflectionTestUtils.setField(jwtTokenService, "expirationMs", 7200000L);
     jwtTokenService.init();
