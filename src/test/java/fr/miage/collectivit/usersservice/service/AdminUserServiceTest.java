@@ -3,7 +3,6 @@ package fr.miage.collectivit.usersservice.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,7 +16,6 @@ import fr.miage.collectivit.usersservice.entity.UserRole;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
-import fr.miage.collectivit.usersservice.service.UserRoleTransitionService;
 import fr.miage.collectivit.usersservice.service.impl.AdminUserServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;

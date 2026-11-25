@@ -21,7 +21,6 @@ import fr.miage.collectivit.usersservice.entity.UserStore;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
-import fr.miage.collectivit.usersservice.service.UserRoleTransitionService;
 import fr.miage.collectivit.usersservice.service.impl.AdminPartnerServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -169,7 +168,8 @@ class AdminPartnerServiceTest {
     UUID remainingStoreUid = UUID.randomUUID();
     when(userRepository.findByPublicId(publicId)).thenReturn(Optional.of(sampleMerchant));
     when(userStoreRepository.findByUserId(1L))
-        .thenReturn(List.of(UserStore.builder().id(102L).userId(1L).storeUid(remainingStoreUid).build()));
+        .thenReturn(
+            List.of(UserStore.builder().id(102L).userId(1L).storeUid(remainingStoreUid).build()));
 
     adminPartnerService.removeStoreFromPartner(publicId, storeUid);
 

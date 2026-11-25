@@ -73,10 +73,7 @@ public final class UserSpecifications {
   }
 
   private static void addEligibleForStorePredicate(
-      List<Predicate> predicates,
-      CriteriaBuilder cb,
-      Root<User> root,
-      Boolean eligibleForStore) {
+      List<Predicate> predicates, CriteriaBuilder cb, Root<User> root, Boolean eligibleForStore) {
     if (Boolean.TRUE.equals(eligibleForStore)) {
       predicates.add(cb.notEqual(root.get("role"), UserRole.ADMIN));
       Instant now = Instant.now();
