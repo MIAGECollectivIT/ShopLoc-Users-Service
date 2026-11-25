@@ -48,6 +48,7 @@ public class AdminUserController {
       @RequestParam(value = "query", required = false) String query,
       @RequestParam(value = "role", required = false) UserRole role,
       @RequestParam(value = "locked", required = false) Boolean locked,
+      @RequestParam(value = "eligibleForStore", required = false) Boolean eligibleForStore,
       @RequestParam(value = "from", required = false) Instant from,
       @RequestParam(value = "to", required = false) Instant to,
       @RequestParam(value = "page", defaultValue = "0") int page,
@@ -57,7 +58,8 @@ public class AdminUserController {
     Pageable pageable =
         PageRequest.of(
             Math.max(0, page), Math.min(100, Math.max(1, size)), Sort.by("createdAt").descending());
-    return ResponseEntity.ok(adminUserService.getUsers(query, role, locked, from, to, pageable));
+    return ResponseEntity.ok(
+        adminUserService.getUsers(query, role, locked, eligibleForStore, from, to, pageable));
   }
 
   @GetMapping("/{id}")

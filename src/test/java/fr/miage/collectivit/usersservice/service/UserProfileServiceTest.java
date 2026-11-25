@@ -44,6 +44,7 @@ class UserProfileServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private UserStoreRepository userStoreRepository;
   @Mock private AdminPartnerService adminPartnerService;
+  @Mock private UserRoleTransitionService userRoleTransitionService;
 
   @InjectMocks private UserProfileServiceImpl userProfileService;
 
@@ -205,12 +206,59 @@ class UserProfileServiceTest {
     UUID merchantPublicId = UUID.randomUUID();
     UUID storeUid = UUID.randomUUID();
     Merchant merchant =
-        Merchant.builder().id(10L).publicId(merchantPublicId).email("m@example.com").build();
+        Merchant.builder()
+            .id(10L)
+            .publicId(merchantPublicId)
+            .email("m@example.com")
+            .role(UserRole.MERCHANT)
+            .build();
     when(userRepository.findByPublicId(merchantPublicId)).thenReturn(Optional.of(merchant));
     when(userStoreRepository.existsByUserIdAndStoreUid(10L, storeUid)).thenReturn(false);
 
     userProfileService.linkStoreToUser(merchantPublicId, storeUid);
 
+    verify(userRoleTransitionService, never()).changeUserRole(any(), any());
+    verify(userStoreRepository).save(any(UserStore.class));
+  }
+
+  @Test
+  void shouldPromoteClientToMerchantWhenLinkingStore() {
+    UUID clientPublicId = UUID.randomUUID();
+    UUID storeUid = UUID.randomUUID();
+    Client client =
+        Client.builder()
+            .id(11L)
+            .publicId(clientPublicId)
+            .email("c@example.com")
+            .role(UserRole.CLIENT)
+            .clientCode("CL54321")
+            .build();
+    when(userRepository.findByPublicId(clientPublicId)).thenReturn(Optional.of(client));
+    when(userStoreRepository.existsByUserIdAndStoreUid(11L, storeUid)).thenReturn(false);
+
+    userProfileService.linkStoreToUser(clientPublicId, storeUid);
+
+    verify(userRoleTransitionService).changeUserRole(11L, UserRole.MERCHANT);
+    verify(userStoreRepository).save(any(UserStore.class));
+  }
+
+  @Test
+  void shouldKeepAdminRoleWhenLinkingStoreToAdmin() {
+    UUID adminPublicId = UUID.randomUUID();
+    UUID storeUid = UUID.randomUUID();
+    Admin admin =
+        Admin.builder()
+            .id(12L)
+            .publicId(adminPublicId)
+            .email("a@example.com")
+            .role(UserRole.ADMIN)
+            .build();
+    when(userRepository.findByPublicId(adminPublicId)).thenReturn(Optional.of(admin));
+    when(userStoreRepository.existsByUserIdAndStoreUid(12L, storeUid)).thenReturn(false);
+
+    userProfileService.linkStoreToUser(adminPublicId, storeUid);
+
+    verify(userRoleTransitionService, never()).changeUserRole(any(), any());
     verify(userStoreRepository).save(any(UserStore.class));
   }
 

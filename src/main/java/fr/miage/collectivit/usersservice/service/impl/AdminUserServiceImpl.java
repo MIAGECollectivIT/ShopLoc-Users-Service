@@ -11,11 +11,13 @@ import fr.miage.collectivit.usersservice.exception.EmailAlreadyExistsException;
 import fr.miage.collectivit.usersservice.exception.UserNotFoundException;
 import fr.miage.collectivit.usersservice.repository.UserRepository;
 import fr.miage.collectivit.usersservice.repository.UserSpecifications;
+import fr.miage.collectivit.usersservice.repository.UserStoreRepository;
 import fr.miage.collectivit.usersservice.service.AdminUserService;
-import fr.miage.collectivit.usersservice.util.ClientCodeGenerator;
-import jakarta.persistence.EntityManager;
+import fr.miage.collectivit.usersservice.service.UserRoleTransitionService;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,22 +33,48 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminUserServiceImpl implements AdminUserService {
 
-  private static final String PARAM_USER_ID = "userId";
-
   private final UserRepository userRepository;
-  private final EntityManager entityManager;
-  private final ClientCodeGenerator clientCodeGenerator;
+  private final UserStoreRepository userStoreRepository;
+  private final UserRoleTransitionService userRoleTransitionService;
 
   @Override
   @Transactional(readOnly = true)
   public PageResponse<UserResponse> getUsers(
-      String query, UserRole role, Boolean locked, Instant from, Instant to, Pageable pageable) {
-    Specification<User> spec = UserSpecifications.withFilters(query, role, locked, from, to);
+      String query,
+      UserRole role,
+      Boolean locked,
+      Boolean eligibleForStore,
+      Instant from,
+      Instant to,
+      Pageable pageable) {
+    Specification<User> spec =
+        UserSpecifications.withFilters(query, role, locked, eligibleForStore, from, to);
     Page<User> page = userRepository.findAll(spec, pageable);
+    List<User> users = page.getContent();
+    Map<Long, Integer> storeCounts = fetchStoreCounts(users);
     List<UserResponse> responses =
-        page.getContent().stream().map(UserResponse::fromEntity).toList();
+        users.stream()
+            .map(u -> UserResponse.fromEntity(u, storeCounts.getOrDefault(u.getId(), 0)))
+            .toList();
     return PageResponse.of(
         responses, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+  }
+
+  private Map<Long, Integer> fetchStoreCounts(List<User> users) {
+    Map<Long, Integer> counts = new HashMap<>();
+    if (users.isEmpty()) {
+      return counts;
+    }
+    List<Long> userIds = users.stream().map(User::getId).toList();
+    for (Object[] row : userStoreRepository.countStoresByUserIds(userIds)) {
+      if (row != null
+          && row.length >= 2
+          && row[0] instanceof Number uId
+          && row[1] instanceof Number count) {
+        counts.put(uId.longValue(), count.intValue());
+      }
+    }
+    return counts;
   }
 
   @Override
@@ -66,7 +94,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     User saved = userRepository.save(user);
 
     if (request.role() != null && request.role() != saved.getRole()) {
-      changeUserRole(saved.getId(), request.role());
+      userRoleTransitionService.changeUserRole(saved.getId(), request.role());
       saved = findUserOrThrow(id);
     }
 
@@ -114,76 +142,6 @@ public class AdminUserServiceImpl implements AdminUserService {
       log.info("Admin unlocked user id={} (publicId={})", saved.getId(), saved.getPublicId());
     }
     return UserResponse.fromEntity(saved);
-  }
-
-  private void changeUserRole(Long userId, UserRole newRole) {
-    entityManager
-        .createNativeQuery(
-            "UPDATE users SET role = :role, updated_at = CURRENT_TIMESTAMP WHERE id = :userId")
-        .setParameter("role", newRole.name())
-        .setParameter(PARAM_USER_ID, userId)
-        .executeUpdate();
-
-    switch (newRole) {
-      case MERCHANT -> {
-        entityManager
-            .createNativeQuery(
-                "INSERT INTO merchants (id) VALUES (:userId) ON CONFLICT (id) DO NOTHING")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-        entityManager
-            .createNativeQuery("DELETE FROM clients WHERE id = :userId")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-        entityManager
-            .createNativeQuery("DELETE FROM admins WHERE id = :userId")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-      }
-      case ADMIN -> {
-        entityManager
-            .createNativeQuery(
-                "INSERT INTO admins (id) VALUES (:userId) ON CONFLICT (id) DO NOTHING")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-        entityManager
-            .createNativeQuery("DELETE FROM clients WHERE id = :userId")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-        entityManager
-            .createNativeQuery("DELETE FROM merchants WHERE id = :userId")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-      }
-      case CLIENT -> {
-        String clientCode = generateUniqueClientCode();
-        entityManager
-            .createNativeQuery(
-                "INSERT INTO clients (id, client_code, license_plates) VALUES (:userId, :clientCode, '{}') ON CONFLICT (id) DO NOTHING")
-            .setParameter(PARAM_USER_ID, userId)
-            .setParameter("clientCode", clientCode)
-            .executeUpdate();
-        entityManager
-            .createNativeQuery("DELETE FROM merchants WHERE id = :userId")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-        entityManager
-            .createNativeQuery("DELETE FROM admins WHERE id = :userId")
-            .setParameter(PARAM_USER_ID, userId)
-            .executeUpdate();
-      }
-    }
-
-    entityManager.flush();
-    entityManager.clear();
-  }
-
-  private String generateUniqueClientCode() {
-    String code;
-    do {
-      code = clientCodeGenerator.generateCode();
-    } while (userRepository.existsByClientCode(code));
-    return code;
   }
 
   private User findUserOrThrow(UUID id) {

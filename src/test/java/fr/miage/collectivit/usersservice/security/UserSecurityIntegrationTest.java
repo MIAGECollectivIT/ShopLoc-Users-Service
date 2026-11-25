@@ -584,7 +584,13 @@ class UserSecurityIntegrationTest {
         .perform(
             get("/v1/admin/partners/" + savedMerchant.getPublicId())
                 .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isNotFound());
+
+    mockMvc
+        .perform(
+            get("/v1/admin/users/" + savedMerchant.getPublicId())
+                .header("Authorization", "Bearer " + adminToken))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.storeUids").isEmpty());
+        .andExpect(jsonPath("$.role").value("CLIENT"));
   }
 }

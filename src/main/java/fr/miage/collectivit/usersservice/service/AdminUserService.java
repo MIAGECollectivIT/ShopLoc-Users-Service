@@ -11,7 +11,13 @@ import org.springframework.data.domain.Pageable;
 public interface AdminUserService {
 
   PageResponse<UserResponse> getUsers(
-      String query, UserRole role, Boolean locked, Instant from, Instant to, Pageable pageable);
+      String query,
+      UserRole role,
+      Boolean locked,
+      Boolean eligibleForStore,
+      Instant from,
+      Instant to,
+      Pageable pageable);
 
   UserResponse getUserById(UUID id);
 
